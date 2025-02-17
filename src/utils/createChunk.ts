@@ -20,6 +20,9 @@ export function createChunk(file: File, index: number, chunkSize: number) {
         blob,
       })
     }
+    // fileReader.onerror = (error) => {
+    //   reject(error)
+    // }
     fileReader.readAsArrayBuffer(blob)
   })
 }

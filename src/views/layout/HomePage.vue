@@ -60,7 +60,12 @@
 import LeftTabs from '@/components/LeftTabs.vue'
 import { ref, onComputed } from 'vue'
 import type { UploadInstance, UploadProps, UploadRawFile } from 'element-plus'
-import { uploadFile, uploadFileChunks } from '@/api/file'
+import {
+  uploadFile,
+  uploadFileChunks,
+  uploadFileByCut,
+  uploadFileByCutThreadPool,
+} from '@/api/file'
 import { genFileId, ElMessage } from 'element-plus'
 import { cutFileChunk } from '@/utils/cutFile-sui'
 import request from '@/utils/request'
@@ -94,7 +99,9 @@ const handleUpload = async (options: any) => {
   const file = options.file
   try {
     // const res = await uploadFile(file) // 调用自定义上传函数
-    const res = await uploadFileChunks(file) // 调用自定义上传函数
+    // const res = await uploadFileChunks(file) // 调用自定义上传函数
+    // const res = await uploadFileByCut(file) // 调用自定义上传函数
+    const res = await uploadFileByCutThreadPool(file) // 调用自定义上传函数
     // const res = await cutFileChunk(file) // 调用自定义上传函数
     // ElMessage.success(`File uploaded successfully: ${res.msg}`)
     // console.log('Uploaded file:', res.data)

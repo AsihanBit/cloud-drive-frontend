@@ -1,7 +1,7 @@
 import request from '@/utils/request'
 import { cutFileChunk } from '@/utils/cutFile'
 import { calculateFileHash, calculatePartialFileHash } from '@/utils/fileMD5'
-
+import { createChunk } from '@/utils/createChunk'
 // 请求头
 // const UPLOAD_HEADERS = {
 //   'Content-Type': 'multipart/form-data',
@@ -102,26 +102,107 @@ export async function uploadFileChunks1(file: File) {
 export async function uploadFileByCut(file: File) {
   // 计算整个文件的MD5值
   const fileHash = await calculateFileHash(file)
-  const chunkSize = 1024 * 1024 // 1MB
+  const chunkSize = 15 * 1024 * 5 // 15KB
   const totalChunks = Math.ceil(file.size / chunkSize)
+
+  console.log('文件片数:', totalChunks)
 
   for (let i = 0; i < totalChunks; i++) {
     const start = i * chunkSize
     const end = Math.min(start + chunkSize, file.size)
     const chunk = file.slice(start, end)
 
+    // 创建分片
+    const chunkData = await createChunk(file, i, chunkSize)
+
+    if (!chunkData.blob) {
+      console.error('Invalid chunk data:', chunkData)
+      continue
+    }
+
     const formData = new FormData()
-    formData.append('file', chunk)
-    formData.append('chunkIndex', i)
+    formData.append('file', chunkData.blob, `${file.name}.part${chunkData.index}`)
+    formData.append('start', chunkData.start.toString())
+    formData.append('end', chunkData.end.toString())
+    formData.append('chunkNumber', chunkData.index.toString())
+    // formData.append('chunkNumber', chunkData.start.toString())
+    formData.append('chunkCount', totalChunks.toString())
+    formData.append('chunkHash', chunkData.hash)
     formData.append('fileHash', fileHash)
+    formData.append('identifier', file.name + '_' + new Date().getTime())
 
     try {
       const response = await request.post('/user/file/chunkUpload', formData, {
         timeout: 5000,
       })
-      console.log(`Chunk ${i} uploaded successfully`, response.data)
+      console.log(`分片 ${chunkData.index} 上传成功`, response)
     } catch (error) {
-      console.error(`Chunk ${i} upload failed`, error)
+      console.error(`分片 ${chunkData.index} 上传失败`, error)
+    }
+  }
+}
+export async function uploadFileByCutThreadPool(file: File) {
+  // 计算整个文件的MD5值
+  const fileHash = await calculateFileHash(file)
+  const chunkSize = 15 * 1024 * 5 // 15KB
+  const totalChunks = Math.ceil(file.size / chunkSize)
+
+  console.log('文件片数:', totalChunks)
+
+  // 使用唯一的 identifier
+  const identifier = file.name + '_' + new Date().getTime()
+
+  // 每个线程分到的分片
+  const threadChunkCount = Math.ceil(totalChunks / navigator.hardwareConcurrency)
+  const workers = []
+
+  for (let i = 0; i < navigator.hardwareConcurrency; i++) {
+    const start = i * threadChunkCount
+    let end = (i + 1) * threadChunkCount
+    if (end > totalChunks) {
+      end = totalChunks
+    }
+
+    const worker = new Worker(new URL('@/utils/worker.ts', import.meta.url), { type: 'module' })
+    workers.push(worker)
+
+    worker.postMessage({
+      file,
+      CHUNK_SIZE: chunkSize,
+      startChunkIndex: start,
+      endChunkIndex: end,
+      identifier,
+      fileHash,
+      totalChunks,
+    })
+
+    worker.onmessage = async (e) => {
+      const chunkData = e.data as Chunk
+      if (!chunkData.blob) {
+        console.error('Invalid chunk data:', chunkData)
+        return
+      }
+
+      const formData = new FormData()
+      formData.append('file', chunkData.blob, `${file.name}.part${chunkData.index}`)
+      formData.append('start', chunkData.start.toString())
+      formData.append('end', chunkData.end.toString())
+      formData.append('chunkNumber', chunkData.index.toString())
+      formData.append('chunkCount', totalChunks.toString())
+      formData.append('chunkHash', chunkData.hash)
+      formData.append('fileHash', fileHash)
+      formData.append('identifier', identifier)
+
+      try {
+        const response = await request.post('/user/file/chunkUpload', formData, {
+          timeout: 5000,
+        })
+        console.log(`分片 ${chunkData.index} 上传成功`, response)
+      } catch (error) {
+        console.error(`分片 ${chunkData.index} 上传失败`, error)
+      }
+
+      // worker.terminate()
     }
   }
 }
