@@ -1,7 +1,7 @@
 import request from '@/utils/request'
 
 export const userRegister = (username: string, password: string, nickname: string) => {
-  return request.post('/user/account/register', {
+  return request.post('/user/user/register', {
     username,
     password,
     nickname,
@@ -9,7 +9,7 @@ export const userRegister = (username: string, password: string, nickname: strin
 }
 
 export const userLogin = (username: string, password: string) => {
-  return request.post('/user/account/login', {
+  return request.post('/user/user/login', {
     username,
     password,
   })

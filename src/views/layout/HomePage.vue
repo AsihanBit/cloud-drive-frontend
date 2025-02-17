@@ -9,7 +9,8 @@
           </el-aside>
           <el-container>
             <el-main>
-              <button @click="test">按钮</button>
+              <button>随切随传按钮</button>
+              <button @click="mergeTest">合并测试</button>
               <!-- 文件上传 -->
               <el-upload
                 ref="uploadRef"
@@ -61,10 +62,18 @@ import { ref, onComputed } from 'vue'
 import type { UploadInstance, UploadProps, UploadRawFile } from 'element-plus'
 import { uploadFile, uploadFileChunks } from '@/api/file'
 import { genFileId, ElMessage } from 'element-plus'
+import { cutFileChunk } from '@/utils/cutFile-sui'
+import request from '@/utils/request'
 
 const uploadRef = ref<UploadInstance>()
 const fileList = ref<UploadRawFile[]>([])
 
+// const testChunkUpload = async () => {
+//   await cutFileChunk()
+// }
+const mergeTest = async () => {
+  const res = await request.post('/user/file/mergeTest')
+}
 // 处理文件选择变化
 const handleChange = (file: UploadRawFile, fileListData: UploadRawFile[]) => {
   // 更新 fileList
@@ -86,6 +95,7 @@ const handleUpload = async (options: any) => {
   try {
     // const res = await uploadFile(file) // 调用自定义上传函数
     const res = await uploadFileChunks(file) // 调用自定义上传函数
+    // const res = await cutFileChunk(file) // 调用自定义上传函数
     // ElMessage.success(`File uploaded successfully: ${res.msg}`)
     // console.log('Uploaded file:', res.data)
   } catch (error) {

@@ -19,12 +19,18 @@ export const uploadFile = (file: File) => {
  * 上传文件分片
  * @param file - 原始文件对象
  */
+
 interface Chunk {
   start: number
   end: number
   index: number
   hash: string
   blob: Blob
+}
+
+interface CutFileResult {
+  chunks: Chunk[]
+  chunkCount: number
 }
 export async function uploadFileChunks(file: File) {
   // 计算整个文件的MD5值
@@ -34,8 +40,10 @@ export async function uploadFileChunks(file: File) {
   // const partialFileHash = await calculatePartialFileHash(file, 1024);
 
   // const chunks = await cutFileChunk(file)
-  const chunks: Chunk[] = (await cutFileChunk(file)) as Chunk[]
+  // const chunks: Chunk[] = (await cutFileChunk(file)) as Chunk[]
+  const { chunks, chunkCount }: CutFileResult = (await cutFileChunk(file)) as CutFileResult
   console.log('file.ts里:', chunks)
+  console.log('chunkCount:', chunkCount)
 
   const uploadPromises = chunks.map(async (chunk, index) => {
     if (!chunk.blob) {
@@ -50,6 +58,7 @@ export async function uploadFileChunks(file: File) {
     formData.append('start', chunk.start.toString())
     formData.append('end', chunk.end.toString())
     formData.append('chunkNumber', chunk.index.toString())
+    formData.append('chunkCount', chunkCount.toString())
     formData.append('chunkHash', chunk.hash)
     formData.append('blob', chunk.blob.toString())
     // 添加整个文件的MD5值
@@ -58,7 +67,7 @@ export async function uploadFileChunks(file: File) {
     formData.append('identifier', file.name + '_' + new Date().getTime()) // 使用文件名和时间戳作为唯一标识符
 
     try {
-      const response = await request.post('/file/chunkUpload', formData)
+      const response = await request.post('/user/file/chunkUpload', formData)
       console.log(`第${index}分片 ${chunk.index} 上传成功`, response)
       return { index: chunk.index, success: true }
     } catch (error) {
@@ -87,4 +96,32 @@ export async function uploadFileChunks(file: File) {
 
 export async function uploadFileChunks1(file: File) {
   return request.post('/file/upload', file)
+}
+
+// 边分片边上传
+export async function uploadFileByCut(file: File) {
+  // 计算整个文件的MD5值
+  const fileHash = await calculateFileHash(file)
+  const chunkSize = 1024 * 1024 // 1MB
+  const totalChunks = Math.ceil(file.size / chunkSize)
+
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * chunkSize
+    const end = Math.min(start + chunkSize, file.size)
+    const chunk = file.slice(start, end)
+
+    const formData = new FormData()
+    formData.append('file', chunk)
+    formData.append('chunkIndex', i)
+    formData.append('fileHash', fileHash)
+
+    try {
+      const response = await request.post('/user/file/chunkUpload', formData, {
+        timeout: 5000,
+      })
+      console.log(`Chunk ${i} uploaded successfully`, response.data)
+    } catch (error) {
+      console.error(`Chunk ${i} upload failed`, error)
+    }
+  }
 }

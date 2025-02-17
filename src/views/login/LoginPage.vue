@@ -40,11 +40,15 @@ import { ref, reactive } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { userLogin } from '@/api/login'
 import { useRoute, useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { ElNotification } from 'element-plus'
 
 // 获取当前路由对象
 const route = useRoute()
 // 获取路由实例
 const router = useRouter()
+// 获取用户信息
+const userStore = useUserStore()
 // 表单信息
 const loginForm = ref({
   username: '',
@@ -91,42 +95,56 @@ const rules = reactive<FormRules<typeof loginForm>>({
 })
 
 // 提交表单的方法
-const submitForm = (formEl: FormInstance | undefined) => {
+const submitForm = async (formEl: FormInstance | undefined) => {
   // 先检查 formEl 存在
   if (!formEl) return
   // 调用 validate 方法进行表单验证，该方法接受一个回调函数作为参数
-  formEl.validate((valid) => {
+  formEl.validate(async (valid) => {
     // 回调函数会在验证完成后被调用，参数 valid 表示验证结果，为布尔值
-    if (valid) {
-      // 如果验证通过，输出 'submit!' 提示信息
-      console.log('submit!')
-      // 实际的表单提交逻辑
-      userLogin(loginForm.value.username, loginForm.value.password).then((res) => {
-        console.log(res)
-        console.log(res.code)
-        if (res.code === 0) {
-          ElNotification({
-            title: '登录失败',
-            message: res.msg,
-            type: 'error',
-          })
-        } else if (res.code === 1) {
-          ElNotification({
-            title: '登录成功',
-            // message: res.msg,
-            type: 'success',
-          })
-          // 进行判断，看地址栏有无回跳地址
-          // 1. 如果有   => 说明是其他页面，拦截到登录来的，需要回跳
-          // 2. 如果没有 => 正常去首页
-          const url = route.query.backUrl || '/home'
-          // const url = '/login'
-          router.replace(url)
-        }
+    if (!valid) {
+      // 如果验证不通过，直接返回
+      return
+    }
+
+    // 如果验证通过，输出 'submit!' 提示信息
+    console.log('submit!')
+    // 实际的表单提交逻辑
+
+    try {
+      // 调用登录接口
+      const res = await userLogin(loginForm.value.username, loginForm.value.password)
+      // console.log(res)
+
+      // 处理登录结果
+      if (res.code === 0) {
+        // 登录失败
+        ElNotification({
+          title: '登录失败',
+          message: res.data.msg,
+          type: 'error',
+        })
+      } else if (res.code === 1) {
+        // 登录成功
+        ElNotification({
+          title: '登录成功',
+          type: 'success',
+        })
+        userStore.setToken(loginForm.value.username, res.data.token)
+
+        // 进行判断，看地址栏有无回跳地址
+        // 1. 如果有   => 说明是其他页面，拦截到登录来的，需要回跳
+        // 2. 如果没有 => 正常去首页
+        const url = route.query.backUrl || '/home'
+        router.replace(url)
+      }
+    } catch (error) {
+      // 捕获异常并提示
+      ElNotification({
+        title: '请求失败',
+        message: '登录请求发生错误，请稍后重试',
+        type: 'error',
       })
-    } else {
-      // 如果验证不通过，输出 'error submit!' 提示信息
-      // console.log('error submit!')
+      console.error('登录请求失败:', error)
     }
   })
 }

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from '@/stores/user'
 // axios 实例
 const instance = axios.create({
   baseURL: '/api',
@@ -10,6 +11,18 @@ const instance = axios.create({
 instance.interceptors.request.use(
   function (config) {
     // 在发送请求之前做些什么
+    // 从 Pinia store 中获取 token
+    const userStore = useUserStore()
+    const token = userStore.getToken()
+    console.log('请求拦截器', token)
+
+    const token2 = userStore.userToken.token
+    console.log('请求拦截器2', token2)
+
+    if (token) {
+      // 将 token 添加到请求头中
+      config.headers['Authorization'] = `Bearer ${token}`
+    }
     return config
   },
   function (error) {
