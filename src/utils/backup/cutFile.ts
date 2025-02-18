@@ -1,6 +1,6 @@
 // const WORKER_URL = './utils/worker.ts' ./worker.ts
 const WORKER_URL = new URL('@/utils/worker.ts', import.meta.url).href
-const CHUNK_SIZE = 15 * 1024
+const CHUNK_SIZE = 15 * 1024 * 5
 // const CHUNK_SIZE = 5 * 1024 * 1024
 const THREAD_COUNT = navigator.hardwareConcurrency // cpu内核数
 

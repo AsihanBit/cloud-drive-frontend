@@ -17,7 +17,7 @@ export const useUserStore = defineStore('user', () => {
   // 获取 token 的方法
   function getToken() {
     userToken.value = getUserToken()
-    console.log('Pinia user 中 getToken', userToken.value)
+    // console.log('Pinia user 中 getToken', userToken.value)
     return userToken.value.token // 返回 token
   }
 

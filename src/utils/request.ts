@@ -4,7 +4,7 @@ import { useUserStore } from '@/stores/user'
 // axios 实例
 const instance = axios.create({
   baseURL: '/api',
-  timeout: 5000,
+  timeout: 500000, // 5000
 })
 
 // 添加请求拦截器
@@ -16,8 +16,8 @@ instance.interceptors.request.use(
     const token = userStore.getToken()
     console.log('请求拦截器', token)
 
-    const token2 = userStore.userToken.token
-    console.log('请求拦截器2', token2)
+    // const token2 = userStore.userToken.token
+    // console.log('请求拦截器2', token2)
 
     if (token) {
       // 将 token 添加到请求头中

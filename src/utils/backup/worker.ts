@@ -1,4 +1,4 @@
-import { createChunk } from '@/utils/createChunk'
+import { createChunk } from '@/utils/backup/createChunk'
 
 onmessage = async (e) => {
   try {

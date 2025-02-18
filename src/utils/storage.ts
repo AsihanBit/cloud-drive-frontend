@@ -14,7 +14,7 @@ export const storageUserToken = (obj: UserToken) => {
 export const getUserToken = () => {
   const defaultObj = { token: '', username: '' }
   const result = localStorage.getItem(USER_TOKEN)
-  console.log('storage工具类中 getUserToken', result)
+  // console.log('storage工具类中 getUserToken', result)
   return result ? JSON.parse(result) : defaultObj
 }
 // 清除

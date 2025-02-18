@@ -1,14 +1,7 @@
-import request from '@/utils/request'
-// 请求头
-// const UPLOAD_HEADERS = {
-//   'Content-Type': 'multipart/form-data',
-// }
-export const uploadFileChunk = (formData: FormData) => {
-  return request.post('/user/file/chunkUpload', formData, {
-    timeout: 100, // 5000
-  })
-}
-/*
+import { uploadFileChunk } from '@/api/file'
+import { calculateFileHash } from '@/utils/fileMD5'
+import type { Ref } from 'vue'
+
 interface Chunk {
   start: number
   end: number
@@ -16,15 +9,14 @@ interface Chunk {
   hash: string
   blob: Blob
 }
-
-export async function uploadFileByCutThreadPool(
+export async function uploadFileChunksThreadPool(
   file: File,
   isPaused: Ref<boolean>,
   uploadedChunks: Ref<number[]>,
 ) {
   // 计算整个文件的MD5值
   const fileHash = await calculateFileHash(file)
-  const chunkSize = 5 * 1024 * 1024 // 15KB
+  const chunkSize = 5 * 1024 * 5 // 15KB
   const totalChunks = Math.ceil(file.size / chunkSize)
 
   console.log('文件片数:', totalChunks)
@@ -35,7 +27,7 @@ export async function uploadFileByCutThreadPool(
   // 限制并发请求数量
   const maxConcurrentRequests = 4 // 最大并发请求数量
   const queue: (() => Promise<void>)[] = []
-  const activeRequests = 0
+  let activeRequests = 0
 
   // 每个线程分到的分片
   // const totalThread = navigator.hardwareConcurrency
@@ -81,19 +73,34 @@ export async function uploadFileByCutThreadPool(
       formData.append('fileHash', fileHash)
       formData.append('identifier', identifier)
 
-      try {
-        const response = await request.post('/user/file/chunkUpload', formData, {
-          timeout: 500000, // 5000
-        })
-        console.log(`分片 ${chunkData.index} 上传成功`, response)
-        // 更新主线程中的 uploadedChunks
-        if (Array.isArray(uploadedChunks.value)) {
-          uploadedChunks.value.push(chunkData.index)
-        } else {
-          console.error('uploadedChunks is not an array:', uploadedChunks.value)
+      const uploadRequest = async () => {
+        try {
+          activeRequests++
+          console.log('目前并发请求数量', activeRequests)
+          const response = await uploadFileChunk(formData)
+          console.log(`分片 ${chunkData.index} 上传成功`, response)
+          // 更新主线程中的 uploadedChunks
+          if (Array.isArray(uploadedChunks.value)) {
+            uploadedChunks.value.push(chunkData.index)
+          } else {
+            console.error('uploadedChunks is not an array:', uploadedChunks.value)
+          }
+        } catch (error) {
+          console.error(`分片 ${chunkData.index} 上传失败`, error)
+        } finally {
+          activeRequests--
+
+          if (queue.length > 0) {
+            const nextRequest = queue.shift()!
+            nextRequest()
+          }
         }
-      } catch (error) {
-        console.error(`分片 ${chunkData.index} 上传失败`, error)
+      }
+
+      if (activeRequests < maxConcurrentRequests) {
+        uploadRequest()
+      } else {
+        queue.push(uploadRequest)
       }
 
       if (isPaused.value) {
@@ -102,4 +109,3 @@ export async function uploadFileByCutThreadPool(
     }
   }
 }
-*/
