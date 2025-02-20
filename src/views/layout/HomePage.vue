@@ -94,7 +94,7 @@
 <script setup lang="ts">
 import LeftTabs from '@/components/LeftTabs.vue'
 import { ref, reactive, onComputed } from 'vue'
-import type { Ref } from 'vue'
+import type { Reactive, Ref } from 'vue'
 import type { UploadInstance, UploadProps, UploadRawFile } from 'element-plus'
 // import { uploadFileByCutThreadPool } from '@/api/file'
 import { uploadFileChunksThreadPool } from '@/utils/chunkUtils'
@@ -105,39 +105,36 @@ import request from '@/utils/request'
 const uploadRef = ref<UploadInstance>()
 const fileList = ref<UploadRawFile[]>([])
 
-const fileUploadStatus = ref<{
-  [key: string]: {
-    isPaused: Ref<boolean>
-    uploadedChunks: Ref<number[]>
-    status: string
-  }
-}>({})
-
-// // 处理文件选择变化
-// const handleChange = (file: UploadRawFile, fileListData: UploadRawFile[]) => {
-//   // 更新 fileList
-//   fileList.value = fileListData
-//   console.log(fileList.value)
-
-//   // 初始化文件上传状态
-//   if (!fileUploadStatus[file.uid]) {
-//     fileUploadStatus[file.uid] = { isPaused: ref(false), uploadedChunks: ref([]) }
+// const fileUploadStatus = ref<{
+//   [key: string]: {
+//     isPaused: Ref<boolean>
+//     uploadedChunks: Ref<number[]>
+//     status: Ref<string>
 //   }
-// }
+// }>({})
 
+// 简化后的 fileUploadStatus 定义
+const fileUploadStatus = ref<
+  Record<
+    string,
+    {
+      isPaused: boolean
+      status: string
+    }
+  >
+>({})
 const handleUpload = async (options: any) => {
   const file = options.file
   console.log(fileUploadStatus.value[file.uid])
   fileUploadStatus.value[file.uid].status = '正在上传'
   try {
-    const res = await uploadFileChunksThreadPool(
-      file,
-      fileUploadStatus.value[file.uid].isPaused,
-      fileUploadStatus.value[file.uid].uploadedChunks,
-    )
+    const res = await uploadFileChunksThreadPool(file)
     // 处理上传成功逻辑
-    fileUploadStatus.value[file.uid].status = '已完成'
-    ElMessage.success(`文件 ${file.name} 上传成功`)
+    console.log('处理上传成功逻辑', res)
+    if (res === 1) {
+      fileUploadStatus.value[file.uid].status = '已完成'
+      ElMessage.success(`文件 ${file.name} 上传成功`)
+    }
   } catch (error) {
     ElMessage.error(`Failed to upload file: ${error.msg}`)
     fileUploadStatus.value[file.uid].status = '上传失败'
@@ -149,25 +146,24 @@ const handleChange = (file: UploadRawFile, fileListData: UploadRawFile[]) => {
   fileList.value = fileListData
   console.log(fileList.value)
 
-  // 初始化文件上传状态
   if (!fileUploadStatus.value[file.uid]) {
     fileUploadStatus.value[file.uid] = {
-      isPaused: ref(false),
-      uploadedChunks: ref([]),
-      status: '已准备', // 使用 ref 包装对象
+      isPaused: true,
+      status: '已准备',
     }
   }
+  console.log(fileUploadStatus.value[file.uid].status)
 }
 
 const pauseUpload = (fileUid: string) => {
-  fileUploadStatus.value[fileUid].isPaused.value = true
+  fileUploadStatus.value[fileUid].isPaused = true
   fileUploadStatus.value[fileUid].status = '已暂停'
   // 可以在这里保存已经上传的分片信息
 }
 
 const resumeUpload = (fileUid: string) => {
   const uid = Number(fileUid) // 将 fileUid 转换为 number 类型
-  fileUploadStatus.value[fileUid].isPaused.value = false
+  fileUploadStatus.value[fileUid].isPaused = false
   fileUploadStatus.value[fileUid].status = '正在上传'
   // 从上次上传的位置继续上传
   const file = fileList.value.find((f) => f.uid === uid)
@@ -195,26 +191,6 @@ const deleteRow = (index: number) => {
 
 // ********* 测试方法 *********
 
-// const handleUpload = async (options: any) => {
-//   const file = options.file
-//   try {
-//     // const res = await uploadFile(file) // 调用自定义上传函数
-//     // const res = await uploadFileChunks(file) // 调用自定义上传函数
-//     // const res = await uploadFileByCut(file) // 调用自定义上传函数
-//     const res = await uploadFileByCutThreadPool(file) // 调用自定义上传函数
-//     // const res = await cutFileChunk(file) // 调用自定义上传函数
-//     // ElMessage.success(`File uploaded successfully: ${res.msg}`)
-//     // console.log('Uploaded file:', res.data)
-//   } catch (error) {
-//     ElMessage.error(`Failed to upload file: ${error.msg}`)
-//     // ElMessage.error(`Failed to upload file catch`)
-//     // console.log('Failed Uploaded file:', res.data)
-//   }
-// }
-
-// const testChunkUpload = async () => {
-//   await cutFileChunk()
-// }
 const mergeTest = async () => {
   const res = await request.post('/user/file/mergeTest')
 }

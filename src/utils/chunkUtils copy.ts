@@ -8,9 +8,11 @@ interface Chunk {
   hash: string
   blob: Blob
 }
+
 export async function uploadFileChunksThreadPool(file: File) {
   // 计算整个文件的MD5值
   const fileHash = await calculateFileHash(file)
+
   // 调用新文件判断接口
   try {
     const { data } = await checkFileIsExist(fileHash)
@@ -23,9 +25,8 @@ export async function uploadFileChunksThreadPool(file: File) {
     console.error('检查文件是否存在时出错:', error)
     return 0
   }
-  console.log('新文件,开始切片上传')
 
-  const chunkSize = 5 * 1024 * 5 // 15KB
+  const chunkSize = 5 * 1024 * 100 // 15KB
   const totalChunks = Math.ceil(file.size / chunkSize)
 
   console.log('文件片数:', totalChunks)
@@ -39,8 +40,8 @@ export async function uploadFileChunksThreadPool(file: File) {
   let activeRequests = 0
 
   // 每个线程分到的分片
-  // const totalThread = navigator.hardwareConcurrency
-  const totalThread = 4
+  const totalThread = navigator.hardwareConcurrency
+  // const totalThread = 4
   const threadChunkCount = Math.ceil(totalChunks / totalThread)
   const workers = []
 
@@ -70,16 +71,21 @@ export async function uploadFileChunksThreadPool(file: File) {
         console.error('Invalid chunk data:', chunkData)
         return
       }
-      // 封装分片存在性检查请求
-      const checkChunkExistenceRequest = async () => {
+
+      const uploadRequest = async () => {
         try {
-          activeRequests++
-          console.log('目前并发分片存在性检查请求数量', activeRequests)
-          const { data } = await checkChunkIsExist(fileHash, chunkData.hash, chunkData.index)
-          console.log('分片存在性检查', data)
-          if (data) {
-            console.log(`分片 ${chunkData.index} 已存在，跳过`)
-            return // 分片已存在，停止上传
+          // 检查分片是否已存在
+          try {
+            const { data } = await checkChunkIsExist(fileHash, chunkData.hash, chunkData.index)
+            console.log('分片存在性检查', data)
+            if (data) {
+              console.log(`分片 ${chunkData.index} 已存在，跳过`)
+              return // 分片已存在，停止上传
+            }
+            // return 1
+          } catch (error) {
+            console.error(`检查分片 ${chunkData.index} 是否存在时出错`, error)
+            return
           }
 
           const formData = new FormData()
@@ -92,46 +98,39 @@ export async function uploadFileChunksThreadPool(file: File) {
           formData.append('fileHash', fileHash)
           formData.append('identifier', identifier)
 
-          const uploadRequest = async () => {
-            try {
-              activeRequests++
-              console.log('目前并发请求数量', activeRequests)
-              const response = await uploadFileChunk(formData)
-              console.log(`分片 ${chunkData.index} 上传成功`, response)
-              // 更新主线程中的 uploadedChunks
-            } catch (error) {
-              console.error(`分片 ${chunkData.index} 上传失败`, error)
-            } finally {
-              activeRequests--
-
-              if (queue.length > 0) {
-                const nextRequest = queue.shift()!
-                nextRequest()
-              }
-            }
-          }
-
-          if (activeRequests < maxConcurrentRequests) {
-            uploadRequest()
-          } else {
-            queue.push(uploadRequest)
-          }
+          activeRequests++
+          console.log('目前并发请求数量', activeRequests)
+          const response = await uploadFileChunk(formData)
+          console.log(`分片 ${chunkData.index} 上传成功`, response)
         } catch (error) {
-          console.error(`检查分片 ${chunkData.index} 是否存在时出错`, error)
+          console.error(`分片 ${chunkData.index} 上传失败`, error)
         } finally {
           activeRequests--
-          if (queue.length > 0) {
-            const nextRequest = queue.shift()!
-            nextRequest()
-          }
+          processQueue()
         }
       }
 
       if (activeRequests < maxConcurrentRequests) {
-        checkChunkExistenceRequest()
+        console.log('增加并发请求', activeRequests)
+        uploadRequest()
       } else {
-        queue.push(checkChunkExistenceRequest)
+        console.log('加入并发队列', activeRequests)
+        queue.push(uploadRequest)
       }
+      // 处理队列中的任务
+      function processQueue() {
+        if (queue.length > 0 && activeRequests < maxConcurrentRequests) {
+          const nextRequest = queue.shift()!
+          nextRequest()
+        }
+      }
+      // worker.terminate()
     }
   }
+
+  // 等待所有 worker 完成
+  await Promise.all(workers.map((worker) => new Promise((resolve) => (worker.onmessage = resolve))))
+
+  // 上传完成
+  return 1
 }

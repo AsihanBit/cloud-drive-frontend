@@ -39,11 +39,11 @@ instance.interceptors.response.use(
     // console.log('请求成功')
 
     const res = response.data
-    console.log(res)
+    // console.log(res)
 
     if (res.code === 1) {
       // 请求成功
-      console.log('请求成功')
+      // console.log('请求成功')
       ElMessage({
         message: res.msg,
         grouping: true,

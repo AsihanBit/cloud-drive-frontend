@@ -11,7 +11,6 @@ onmessage = async (e) => {
       identifier,
       fileHash,
       totalChunks,
-      uploadedChunks = [], // 默认值为 []
     } = e.data
     console.log('Received data:', {
       file,
@@ -21,10 +20,9 @@ onmessage = async (e) => {
       identifier,
       fileHash,
       totalChunks,
-      uploadedChunks,
     }) // 调试信息
     console.log(file, CHUNK_SIZE, start, end) // 拿到数据
-    console.log('准备切片')
+    // console.log('准备切片')
 
     // const proms = []
     // for (let i = start; i < end; i++) {
@@ -33,10 +31,10 @@ onmessage = async (e) => {
     // const chunks = await Promise.all(proms)
     // postMessage(chunks)
     for (let i = start; i < end; i++) {
-      if (uploadedChunks.includes(i)) {
-        console.log(`分片 ${i} 已上传，跳过`)
-        continue
-      }
+      // if (uploadedChunks.includes(i)) {
+      //   console.log(`分片 ${i} 已上传，跳过`)
+      //   continue
+      // }
 
       const chunkData = await createChunk(file, i, CHUNK_SIZE)
       console.log('切片完成')
