@@ -5,7 +5,7 @@ import SparkMD5 from 'spark-md5'
  * @param file - 文件对象
  * @returns Promise<string> - 文件的MD5哈希值
  */
-export async function calculateFileHash(file: File): Promise<string> {
+export async function calculateFileHash(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     const spark = new SparkMD5.ArrayBuffer()
@@ -20,6 +20,7 @@ export async function calculateFileHash(file: File): Promise<string> {
     }
 
     reader.onerror = () => reject('Error reading file.')
+    console.log('fileMD5', file)
     reader.readAsArrayBuffer(file)
   })
 }
@@ -30,7 +31,7 @@ export async function calculateFileHash(file: File): Promise<string> {
  * @param bytes - 要读取的字节数，默认为1024字节
  * @returns Promise<string> - 文件的部分MD5哈希值
  */
-export async function calculatePartialFileHash(file: File, bytes: number = 1024): Promise<string> {
+export async function calculatePartialFileHash(file: Blob, bytes: number = 1024): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     const spark = new SparkMD5.ArrayBuffer()

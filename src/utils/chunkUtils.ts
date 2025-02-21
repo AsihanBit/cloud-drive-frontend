@@ -1,5 +1,8 @@
 import { uploadFileChunk, checkFileIsExist, checkChunkIsExist } from '@/api/file'
 import { calculateFileHash } from '@/utils/fileMD5'
+import type { UploadInstance, UploadProps, UploadRawFile } from 'element-plus'
+import { useUploadFileStore } from '@/stores/uploadFile'
+import { reactive } from 'vue'
 
 interface Chunk {
   start: number
@@ -8,9 +11,17 @@ interface Chunk {
   hash: string
   blob: Blob
 }
-export async function uploadFileChunksThreadPool(file: File) {
+
+// interface FileWithUid extends File {
+//   uid: string
+// }
+export async function uploadFileChunksThreadPool(file: UploadRawFile) {
+  // console.log('uploadFileChunksThreadPool - file对象', file)
+  // console.log('uploadFileChunksThreadPool - file对象类型', typeof file)
+
+  const uploadFileStore = useUploadFileStore()
   // 计算整个文件的MD5值
-  const fileHash = await calculateFileHash(file)
+  const fileHash = await calculateFileHash(file as File)
   // 调用新文件判断接口
   try {
     const { data } = await checkFileIsExist(fileHash)
@@ -25,7 +36,7 @@ export async function uploadFileChunksThreadPool(file: File) {
   }
   console.log('新文件,开始切片上传')
 
-  const chunkSize = 5 * 1024 * 5 // 15KB
+  const chunkSize = 5 * 1024 * 100 // 15KB
   const totalChunks = Math.ceil(file.size / chunkSize)
 
   console.log('文件片数:', totalChunks)
@@ -37,6 +48,12 @@ export async function uploadFileChunksThreadPool(file: File) {
   const maxConcurrentRequests = 4 // 最大并发请求数量
   const queue: (() => Promise<void>)[] = []
   let activeRequests = 0
+
+  // 获取已上传的分片下标
+  const uploadedChunkIndexes = uploadFileStore.getFileByUid(file.uid)?.uploadedChunkIndexes || []
+  // const uploadedChunkIndexes = reactive(
+  //   uploadFileStore.getFileByUid(file.uid)?.uploadedChunkIndexes || [],
+  // )
 
   // 每个线程分到的分片
   // const totalThread = navigator.hardwareConcurrency
@@ -62,6 +79,9 @@ export async function uploadFileChunksThreadPool(file: File) {
       identifier,
       fileHash,
       totalChunks,
+      // uploadedChunkIndexes, // 传递已上传的分片下标
+      // uploadedChunkIndexes: [...uploadedChunkIndexes], // 浅拷贝数组
+      uploadedChunkIndexes: JSON.stringify(uploadedChunkIndexes), // 序列化为 JSON 字符串
     })
 
     worker.onmessage = async (e) => {
@@ -70,14 +90,24 @@ export async function uploadFileChunksThreadPool(file: File) {
         console.error('Invalid chunk data:', chunkData)
         return
       }
+
       // 封装分片存在性检查请求
       const checkChunkExistenceRequest = async () => {
+        // 检查文件是否处于暂停状态
+        if (uploadFileStore.isFilePaused(file.uid)) {
+          console.log('文件已暂停，停止上传')
+          return
+        }
+
         try {
           activeRequests++
           console.log('目前并发分片存在性检查请求数量', activeRequests)
           const { data } = await checkChunkIsExist(fileHash, chunkData.hash, chunkData.index)
           console.log('分片存在性检查', data)
           if (data) {
+            console.log('uploadFileStore 的文件uid', file.uid)
+            // 更新中的 uploadedChunks
+            uploadFileStore.incrementUploadedChunks(file.uid, chunkData.index)
             console.log(`分片 ${chunkData.index} 已存在，跳过`)
             return // 分片已存在，停止上传
           }
@@ -98,6 +128,10 @@ export async function uploadFileChunksThreadPool(file: File) {
               console.log('目前并发请求数量', activeRequests)
               const response = await uploadFileChunk(formData)
               console.log(`分片 ${chunkData.index} 上传成功`, response)
+              // 更新已上传的分片数量
+              console.log('uploadFileStore 的文件uid', file.uid)
+              // 更新中的 uploadedChunks
+              uploadFileStore.incrementUploadedChunks(file.uid, chunkData.index)
               // 更新主线程中的 uploadedChunks
             } catch (error) {
               console.error(`分片 ${chunkData.index} 上传失败`, error)
