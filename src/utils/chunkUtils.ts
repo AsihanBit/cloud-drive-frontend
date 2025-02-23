@@ -12,14 +12,25 @@ interface Chunk {
   blob: Blob
 }
 
+interface uploadFileType extends UploadRawFile {
+  // 已有属性: name  percentage  status  size  raw  uid
+  status: string // 文件状态：已准备、正在上传、已暂停、已完成、上传失败
+  uploadedChunks: number // 已上传的分片数量
+  totalChunks: number // 总分片数量
+  uploadedChunkIndexes: number[] // 已上传的分片下标
+}
+
 // interface FileWithUid extends File {
 //   uid: string
 // }
-export async function uploadFileChunksThreadPool(file: UploadRawFile) {
-  // console.log('uploadFileChunksThreadPool - file对象', file)
+export async function uploadFileChunksThreadPool(fileUid: number) {
   // console.log('uploadFileChunksThreadPool - file对象类型', typeof file)
-
+  // 获取Pinia里的文件
   const uploadFileStore = useUploadFileStore()
+  const uploadFile = uploadFileStore.getUploadFileByUid(fileUid)
+  const file = uploadFile.raw
+  console.log('uploadFileChunksThreadPool - file对象', file)
+
   // 计算整个文件的MD5值
   const fileHash = await calculateFileHash(file as File)
   // 调用新文件判断接口
@@ -108,6 +119,7 @@ export async function uploadFileChunksThreadPool(file: UploadRawFile) {
             console.log('uploadFileStore 的文件uid', file.uid)
             // 更新中的 uploadedChunks
             uploadFileStore.incrementUploadedChunks(file.uid, chunkData.index)
+            uploadFile.uploadedChunks += 1
             console.log(`分片 ${chunkData.index} 已存在，跳过`)
             return // 分片已存在，停止上传
           }

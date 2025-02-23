@@ -129,7 +129,9 @@ const submitForm = async (formEl: FormInstance | undefined) => {
           title: '登录成功',
           type: 'success',
         })
-        userStore.setToken(loginForm.value.username, res.data.token)
+        console.log('LoginPage,submitForm', res)
+        // userStore.setToken(loginForm.value.username, res.data.token)
+        userStore.setToken(res.data.userId, res.data.username, res.data.token)
 
         // 进行判断，看地址栏有无回跳地址
         // 1. 如果有   => 说明是其他页面，拦截到登录来的，需要回跳

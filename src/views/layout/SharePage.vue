@@ -8,7 +8,7 @@
             <LeftTabs></LeftTabs>
           </el-aside>
           <el-container>
-            <el-main> 这里是主页 </el-main>
+            <el-main> 这里是分享 </el-main>
             <el-footer>Footer</el-footer>
           </el-container>
         </el-container>

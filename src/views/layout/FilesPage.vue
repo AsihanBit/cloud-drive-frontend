@@ -8,7 +8,9 @@
             <LeftTabs></LeftTabs>
           </el-aside>
           <el-container>
-            <el-main> 这里是主页 </el-main>
+            <el-main>
+              <RouterView />
+            </el-main>
             <el-footer>Footer</el-footer>
           </el-container>
         </el-container>
@@ -39,6 +41,8 @@ import LeftTabs from '@/components/LeftTabs.vue'
       background-color: #6bb5ff;
       text-align: center;
       min-height: 82vh;
+
+      padding: 40px 0 0 0;
     }
     .el-footer {
       background-color: #b6ffa7;

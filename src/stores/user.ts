@@ -4,6 +4,7 @@ import { storageUserToken, getUserToken, clearUserToken } from '@/utils/storage'
 // 定义一个 Pinia 存储，用于管理用户信息
 
 interface UserToken {
+  userId: number
   username: string
   token: string
 }
@@ -11,20 +12,20 @@ interface UserToken {
 export const useUserStore = defineStore('user', () => {
   // 使用 ref 定义响应式变量
   // let userToken = ref('')
-  const userToken = ref<UserToken>(getUserToken() || { token: '', username: '' })
+  const userInfo = ref<UserToken>(getUserToken() || { token: '', username: '' })
   // const userToken = ref<UserToken>({ username: '', token: '' })
 
   // 获取 token 的方法
   function getToken() {
-    userToken.value = getUserToken()
+    userInfo.value = getUserToken()
     // console.log('Pinia user 中 getToken', userToken.value)
-    return userToken.value.token // 返回 token
+    return userInfo.value.token // 返回 token
   }
 
   // 设置 token 的方法
-  function setToken(username: string, token: string) {
-    userToken.value = { username, token }
-    storageUserToken(userToken.value)
+  function setToken(userId: number, username: string, token: string) {
+    userInfo.value = { userId, username, token }
+    storageUserToken(userInfo.value)
   }
 
   // const count = ref(0)
@@ -34,5 +35,5 @@ export const useUserStore = defineStore('user', () => {
   // }
 
   // return { count, doubleCount, increment }
-  return { userToken, getToken, setToken }
+  return { userInfo, getToken, setToken }
 })

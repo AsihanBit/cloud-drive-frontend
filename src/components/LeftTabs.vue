@@ -17,21 +17,26 @@
       <!-- 一级菜单 -->
       <div class="menu-one">
         <el-menu
-          default-active="2"
+          :default-active="activeIndex"
           class="el-menu-vertical-demo"
           :collapse="isCollapse"
           @open="handleOpen"
           @close="handleClose"
+          :router="true"
         >
-          <el-menu-item index="1">
+          <el-menu-item index="/home">
             <el-icon><HomeFilled /></el-icon>
             <template #title>首页</template>
           </el-menu-item>
-          <el-menu-item index="2">
+          <el-menu-item index="/files">
             <el-icon><FolderOpened /></el-icon>
             <template #title>文件</template>
           </el-menu-item>
-          <el-menu-item index="3">
+          <el-menu-item index="/transfers">
+            <el-icon><Sort /></el-icon>
+            <template #title>传输</template>
+          </el-menu-item>
+          <el-menu-item index="/share">
             <el-icon><Share /></el-icon>
             <template #title>分享</template>
           </el-menu-item>
@@ -45,10 +50,23 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
-import { HomeFilled, FolderOpened, Share } from '@element-plus/icons-vue'
-// import LeftHome from './LeftHome.vue'
+import { ref, computed } from 'vue'
+import { HomeFilled, FolderOpened, Share, Sort } from '@element-plus/icons-vue'
+import { useRoute } from 'vue-router'
+
 const isCollapse = ref(false)
+const route = useRoute()
+
+const activeIndex = computed(() => {
+  const path = route.path
+  if (path.startsWith('/home')) return '/home'
+  if (path.startsWith('/files')) return '/files'
+  if (path.startsWith('/transfers')) return '/transfers'
+  if (path.startsWith('/share')) return '/share'
+  return ''
+})
+
+// import LeftHome from './LeftHome.vue'
 
 const handleOpen = (key: string, keyPath: string[]) => {
   // console.log(key, keyPath)
