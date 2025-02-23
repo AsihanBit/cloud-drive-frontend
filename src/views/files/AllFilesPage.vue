@@ -36,7 +36,7 @@
           drag
           :limit="5"
           :auto-upload="false"
-          :http-request="handleUpload"
+          @change="handleChange"
           multiple
         >
           <el-icon class="el-icon--upload"><upload-filled /></el-icon>
@@ -54,38 +54,26 @@
 import LeftFile from '@/components/LeftFile.vue'
 import { getUserItems } from '@/api/userItems'
 import { Folder, Picture, UploadFilled } from '@element-plus/icons-vue'
+import { useUploadFileStore } from '@/stores/uploadFile'
 import type {
   UploadInstance,
   UploadProps,
   UploadRawFile,
+  UploadFile,
   UploadRequestHandler,
   UploadRequestOptions,
 } from 'element-plus'
 import { ref, onMounted } from 'vue'
 const fileList = ref([])
 const uploadRef = ref<UploadInstance>()
+const uploadFileStore = useUploadFileStore()
 const formatUpdateTime = (updateTime: number[]) => {
   const [year, month, day, hour, minute, second] = updateTime
   return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:${second.toString().padStart(2, '0')}`
 }
 
-const handleUpload: UploadRequestHandler = async (options: any) => {
-  const file: UploadRawFile = options.file
-  console.log('handleUpload-options', options)
-  console.log('handleUpload-options.file', options.file)
-  uploadFileStore.setFileStatus(file.uid, '正在上传')
-  try {
-    const res = await uploadFileChunksThreadPool(file)
-    // 处理上传成功逻辑
-    console.log('处理上传成功逻辑', res)
-    if (res === 1) {
-      uploadFileStore.setFileStatus(file.uid, '已完成')
-      ElMessage.success(`文件 ${file.name} 上传成功`)
-    }
-  } catch (error) {
-    ElMessage.error(`Failed to upload file: ${error.msg}`)
-    uploadFileStore.setFileStatus(file.uid, '上传失败')
-  }
+const handleChange = (file: UploadFile) => {
+  uploadFileStore.addFile(file)
 }
 
 onMounted(async () => {

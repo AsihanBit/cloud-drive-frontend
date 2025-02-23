@@ -9,7 +9,6 @@
           </el-aside>
           <el-container>
             <el-main>
-              <button>随切随传按钮</button>
               <button @click="mergeTest">合并测试</button>
               <!-- 文件上传 -->
               <el-upload
@@ -21,62 +20,24 @@
                 :multiple="true"
                 @change="handlePiniaChange"
               >
-                <!-- @change="handleChange" -->
                 <template #trigger>
                   <el-button type="primary"> 选择文件/文件夹 </el-button>
                 </template>
                 <el-button class="ml-3" type="success" @click="submitPiniaUpload">
-                  点击上传
+                  开始上传
                 </el-button>
                 <template #tip>
                   <div class="el-upload__tip text-red">最多上3文件,新文件覆盖旧文件</div>
                 </template>
               </el-upload>
-              <el-table :data="fileList" stripe style="width: 100%; margin-top: 20px">
-                <!-- 移除 -->
-                <el-table-column fixed="right" label="Operations" min-width="120">
-                  <template #default="scope">
-                    <el-button
-                      v-if="uploadFileStore.files[scope.row.uid]?.status === '已准备'"
-                      link
-                      type="primary"
-                      size="small"
-                      @click.prevent="startUpload(scope.row.uid)"
-                    >
-                      上传
-                    </el-button>
-                    <el-button
-                      v-else-if="uploadFileStore.files[scope.row.uid]?.status === '正在上传'"
-                      link
-                      type="warning"
-                      size="small"
-                      @click.prevent="pauseUpload(scope.row.uid)"
-                    >
-                      暂停
-                    </el-button>
-                    <el-button
-                      v-else-if="uploadFileStore.files[scope.row.uid]?.status === '已暂停'"
-                      link
-                      type="primary"
-                      size="small"
-                      @click.prevent="resumeUpload(scope.row.uid)"
-                    >
-                      继续
-                    </el-button>
-                    <span v-if="uploadFileStore.files[scope.row.uid]?.status === '正在上传'">
-                      上传中...
-                    </span>
-                  </template>
-                </el-table-column>
-              </el-table>
               <!-- 新的表 -->
               <el-table
-                :data="uploadFileStore.uploadFile"
+                :data="Object.values(uploadFileStore.files)"
                 stripe
                 style="width: 100%; margin-top: 20px"
               >
                 <el-table-column prop="name" label="文件名" width="180"></el-table-column>
-                <el-table-column prop="status" label="状态" width="180"> </el-table-column>
+                <el-table-column prop="uploadStatus" label="状态" width="180"> </el-table-column>
                 <el-table-column prop="size" label="大小（字节）">
                   <template #default="scope">
                     {{ uploadFileStore.formatSize(scope.row.uid) }}
@@ -85,16 +46,16 @@
                 <el-table-column label="进度" width="180">
                   <template #default="scope">
                     <el-progress
-                      :percentage="uploadFileStore.uploadFileProgress(scope.row.uid)"
+                      :percentage="uploadFileStore.uploadProgress(scope.row.uid)"
                     ></el-progress>
-                    <span>下标: {{ getIndexByUid(scope.row.uid) }}</span>
+                    <!-- <span>下标: {{ getIndexByUid(scope.row.uid) }}</span> -->
                   </template>
                 </el-table-column>
                 <!-- 移除 -->
                 <el-table-column fixed="right" label="Operations" min-width="120">
                   <template #default="scope">
                     <el-button
-                      v-if="uploadFileStore.getUploadFileStatusByUid(scope.row.uid) === '已准备'"
+                      v-if="uploadFileStore.getFileStatus(scope.row.uid) === '已准备'"
                       link
                       type="primary"
                       size="small"
@@ -103,9 +64,7 @@
                       上传
                     </el-button>
                     <el-button
-                      v-else-if="
-                        uploadFileStore.getUploadFileStatusByUid(scope.row.uid) === '正在上传'
-                      "
+                      v-else-if="uploadFileStore.getFileStatus(scope.row.uid) === '正在上传'"
                       link
                       type="warning"
                       size="small"
@@ -114,9 +73,7 @@
                       暂停
                     </el-button>
                     <el-button
-                      v-else-if="
-                        uploadFileStore.getUploadFileStatusByUid(scope.row.uid) === '已暂停'
-                      "
+                      v-else-if="uploadFileStore.getFileStatus(scope.row.uid) === '已暂停'"
                       link
                       type="primary"
                       size="small"
@@ -124,11 +81,6 @@
                     >
                       继续
                     </el-button>
-                    <span
-                      v-if="uploadFileStore.getUploadFileStatusByUid(scope.row.uid) === '正在上传'"
-                    >
-                      上传中...
-                    </span>
                     <el-button
                       link
                       type="primary"
@@ -137,6 +89,9 @@
                     >
                       移除
                     </el-button>
+                    <span v-if="uploadFileStore.getFileStatus(scope.row.uid) === '正在上传'">
+                      上传中...
+                    </span>
                   </template>
                 </el-table-column>
               </el-table>
@@ -164,60 +119,55 @@ import { uploadFileChunksThreadPool } from '@/utils/chunkUtils'
 import { genFileId, ElMessage } from 'element-plus'
 import { useUploadFileStore } from '@/stores/uploadFile'
 import request from '@/utils/request'
+
 const uploadRef = ref<UploadInstance>()
-const fileList = ref<UploadRawFile[]>([])
+// const fileList = ref<UploadRawFile[]>([])
 const uploadFileStore = useUploadFileStore()
 const handlePiniaChange = (file: UploadRawFile) => {
-  uploadFileStore.addUploadFile(file)
-  uploadFileStore.initUploadFileStatus(file.uid)
+  // uploadFileStore.addUploadFile(file)
+  // uploadFileStore.initUploadFileStatus(file.uid)
   uploadFileStore.addFile(file)
 }
 
 const submitPiniaUpload = async () => {
-  console.log('submitPiniaUpload', uploadFileStore.uploadFile.length)
-  for (let i = 0; i < uploadFileStore.uploadFile.length; i++) {
-    const element = uploadFileStore.uploadFile[i]
-    console.log('submitPiniaUpload-for', element)
-    // element.status = '正在上传'
-    uploadFileStore.setUploadFileStatusByUid(element.uid, '正在上传')
-    const file = element.raw
-    console.log('element', element)
+  console.log('submitPiniaUpload', uploadFileStore.files)
+  // const fileCount = Object.keys(uploadFileStore.files).length
+  // const fileCount = Object.entries(uploadFileStore.files).length
+  // console.log('文件数量:', fileCount)
+  for (const fileUid in uploadFileStore.files) {
+    const file = uploadFileStore.files[fileUid]
+    if (file.uploadStatus !== '已准备' && file.uploadStatus !== '已暂停') continue
+    uploadFileStore.setFileStatus(fileUid, '正在上传')
     try {
-      const res = await uploadFileChunksThreadPool(element.uid)
-      // 处理上传成功逻辑
-      console.log('处理上传成功逻辑', res)
-
+      const res = await uploadFileChunksThreadPool(fileUid)
       if (res === 1) {
-        // uploadFileStore.setUploadFileStatusByUid(file.uid, '已完成')
-        element.status = '已完成'
+        uploadFileStore.setFileStatus(fileUid, '已完成')
         ElMessage.success(`文件 ${file.name} 上传成功`)
       }
     } catch (error) {
-      console.log(error)
-      ElMessage.error(`Failed to upload file: ${error.msg}`)
-      uploadFileStore.setUploadFileStatusByUid(file.uid, '上传失败')
+      ElMessage.error(`Failed to upload file: ${error.message}`)
+      uploadFileStore.setFileStatus(fileUid, '上传失败')
     }
   }
 }
 
-// 定义计算属性来查找文件的下标 startPiniaUpload
-const getIndexByUid = computed(() => {
-  return (uid) => {
-    return uploadFileStore.uploadFile.findIndex((item) => item.uid === uid)
-  }
-})
+// // 定义计算属性来查找文件的下标 startPiniaUpload
+// const getIndexByUid = computed(() => {
+//   return (uid) => {
+//     return uploadFileStore.uploadFile.findIndex((item) => item.uid === uid)
+//   }
+// })
 
 const startPiniaUpload = async (fileUid: number) => {
   console.warn('startPiniaUpload')
-
   // 找到对应的文件
-  const file = uploadFileStore.getUploadFileByUid(fileUid)
+  const file = uploadFileStore.files[fileUid]
   if (!file) {
     console.error('未找到对应的文件')
     return
   }
   // 设置文件状态为正在上传
-  file.status = '正在上传'
+  file.uploadStatus = '正在上传'
 
   try {
     // 确保传递的是原始的 UploadRawFile 对象  Blob 对象
@@ -233,12 +183,12 @@ const startPiniaUpload = async (fileUid: number) => {
     // 处理上传成功逻辑
     console.log('处理上传成功逻辑', res)
     if (res === 1) {
-      uploadFileStore.setUploadFileStatusByUid(fileUid, '已完成')
+      uploadFileStore.setFileStatus(fileUid, '已完成')
       ElMessage.success(`文件 ${file.name} 上传成功`)
     }
   } catch (error) {
     ElMessage.error(`Failed to upload file: ${error.message}`)
-    uploadFileStore.setUploadFileStatusByUid(fileUid, '上传失败')
+    uploadFileStore.setFileStatus(fileUid, '上传失败')
   }
 }
 
@@ -249,12 +199,12 @@ const testMsg = () => {
 }
 
 const pauseUpload = (fileUid: number) => {
-  uploadFileStore.setUploadFileStatusByUid(fileUid, '已暂停')
+  uploadFileStore.setFileStatus(fileUid, '已暂停')
   // 可以在这里保存已经上传的分片信息
 }
 
 const resumeUpload = (fileUid: number) => {
-  uploadFileStore.setUploadFileStatusByUid(fileUid, '正在上传')
+  uploadFileStore.setFileStatus(fileUid, '正在上传')
   // 从上次上传的位置继续上传
   startPiniaUpload(fileUid)
 }
@@ -264,7 +214,7 @@ const deleteRow = (index: number) => {
 
   const fileUid = fileList.value[index].uid
   fileList.value.splice(index, 1)
-  uploadFileStore.removeFileStatus(fileUid)
+  uploadFileStore.removeFile(fileUid)
   console.log(fileList.value)
 }
 

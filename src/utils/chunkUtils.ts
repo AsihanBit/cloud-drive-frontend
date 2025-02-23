@@ -1,9 +1,10 @@
 import { uploadFileChunk, checkFileIsExist, checkChunkIsExist } from '@/api/file'
 import { calculateFileHash } from '@/utils/fileMD5'
-import type { UploadInstance, UploadProps, UploadRawFile } from 'element-plus'
+import type { UploadInstance, UploadProps, UploadRawFile, UploadFile } from 'element-plus'
 import { useUploadFileStore } from '@/stores/uploadFile'
 import { reactive } from 'vue'
-
+import { CHUNK_SIZE } from '@/constants/constants'
+import type { FileRecord, FileInfo } from '@/types/fileType'
 interface Chunk {
   start: number
   end: number
@@ -12,27 +13,16 @@ interface Chunk {
   blob: Blob
 }
 
-interface uploadFileType extends UploadRawFile {
-  // 已有属性: name  percentage  status  size  raw  uid
-  status: string // 文件状态：已准备、正在上传、已暂停、已完成、上传失败
-  uploadedChunks: number // 已上传的分片数量
-  totalChunks: number // 总分片数量
-  uploadedChunkIndexes: number[] // 已上传的分片下标
-}
-
-// interface FileWithUid extends File {
-//   uid: string
-// }
 export async function uploadFileChunksThreadPool(fileUid: number) {
-  // console.log('uploadFileChunksThreadPool - file对象类型', typeof file)
   // 获取Pinia里的文件
   const uploadFileStore = useUploadFileStore()
-  const uploadFile = uploadFileStore.getUploadFileByUid(fileUid)
+  const uploadFile = uploadFileStore.files[fileUid] as FileInfo
   const file = uploadFile.raw
-  console.log('uploadFileChunksThreadPool - file对象', file)
+  console.log('uploadFileChunksThreadPool - file对象', file, typeof file)
 
   // 计算整个文件的MD5值
   const fileHash = await calculateFileHash(file as File)
+
   // 调用新文件判断接口
   try {
     const { data } = await checkFileIsExist(fileHash)
@@ -47,12 +37,13 @@ export async function uploadFileChunksThreadPool(fileUid: number) {
   }
   console.log('新文件,开始切片上传')
 
-  const chunkSize = 5 * 1024 * 100 // 15KB
-  const totalChunks = Math.ceil(file.size / chunkSize)
+  // const chunkSize = 5 * 1024 * 100 // 15KB
+  // const totalChunks = Math.ceil(file.size / chunkSize)
 
+  const totalChunks = uploadFile.totalChunks
   console.log('文件片数:', totalChunks)
 
-  // 使用唯一的 identifier
+  // 没啥用的标识器 identifier
   const identifier = file.name + '_' + new Date().getTime()
 
   // 限制并发请求数量
@@ -61,7 +52,7 @@ export async function uploadFileChunksThreadPool(fileUid: number) {
   let activeRequests = 0
 
   // 获取已上传的分片下标
-  const uploadedChunkIndexes = uploadFileStore.getFileByUid(file.uid)?.uploadedChunkIndexes || []
+  const uploadedChunkIndexes = uploadFile.uploadedChunkIndexes || []
   // const uploadedChunkIndexes = reactive(
   //   uploadFileStore.getFileByUid(file.uid)?.uploadedChunkIndexes || [],
   // )
@@ -84,7 +75,7 @@ export async function uploadFileChunksThreadPool(fileUid: number) {
 
     worker.postMessage({
       file,
-      CHUNK_SIZE: chunkSize,
+      CHUNK_SIZE: CHUNK_SIZE,
       startChunkIndex: start,
       endChunkIndex: end,
       identifier,
@@ -119,7 +110,6 @@ export async function uploadFileChunksThreadPool(fileUid: number) {
             console.log('uploadFileStore 的文件uid', file.uid)
             // 更新中的 uploadedChunks
             uploadFileStore.incrementUploadedChunks(file.uid, chunkData.index)
-            uploadFile.uploadedChunks += 1
             console.log(`分片 ${chunkData.index} 已存在，跳过`)
             return // 分片已存在，停止上传
           }
