@@ -14,7 +14,7 @@ export const useUploadFileStore = defineStore('uploadFile', () => {
   // ******************** 自定义对象类型 ********************
   const files = ref<FileRecord>({})
   // 初始化文件上传状态的方法
-  const addFile = (rawFile: UploadFile) => {
+  const addFile = (rawFile: UploadFile, currentPId: number) => {
     const file: FileInfo = {
       ...rawFile,
       uploadStatus: '已准备',
@@ -23,6 +23,9 @@ export const useUploadFileStore = defineStore('uploadFile', () => {
       uploadedChunkIndexes: [],
       percentage: 0, // 进度百分比 防止报错重定义
       raw: rawFile.raw as UploadRawFile,
+      targetPathId: currentPId,
+      workers: [], // 添加 workers 数组
+      abortControllers: [], // 添加 abortControllers 数组
     }
     if (!file.size) {
       file.size = 0
@@ -66,17 +69,6 @@ export const useUploadFileStore = defineStore('uploadFile', () => {
     return files.value[uid].uploadStatus
   }
 
-  // 设置文件状态的方法
-  const setFileStatus = (uid: number, newStatus: string) => {
-    console.log('触发 - 设置文件状态的方法')
-    console.log('文件状态-前', files.value[uid].uploadStatus)
-    const file = files.value[uid]
-    if (file) {
-      files.value[uid].uploadStatus = newStatus
-    }
-    console.log('文件状态-后', files.value[uid].uploadStatus)
-  }
-
   // 移除文件
   const removeFile = (uid: number) => {
     if (files.value[uid]) {
@@ -89,6 +81,33 @@ export const useUploadFileStore = defineStore('uploadFile', () => {
     return files.value[uid]?.uploadStatus === '已暂停'
   }
 
+  // // 设置文件状态的方法
+  // const setFileStatus = (uid: number, newStatus: string) => {
+  //   console.log('触发 - 设置文件状态的方法')
+  //   console.log('文件状态-前', files.value[uid].uploadStatus)
+  //   const file = files.value[uid]
+  //   if (file) {
+  //     files.value[uid].uploadStatus = newStatus
+  //   }
+  //   console.log('文件状态-后', files.value[uid].uploadStatus)
+  // }
+
+  // 在 uploadFile.ts 中
+  const setFileStatus = (uid: number, newStatus: string) => {
+    console.log('触发 - 设置文件状态的方法')
+    console.log('文件状态-前', files.value[uid].uploadStatus)
+    const file = files.value[uid]
+    if (file) {
+      files.value[uid].uploadStatus = newStatus
+      if (newStatus === '已暂停') {
+        // 终止所有 Worker
+        file.workers?.forEach((worker) => worker.terminate())
+        // 终止所有上传请求
+        file.abortControllers?.forEach((controller) => controller.abort())
+      }
+    }
+    console.log('文件状态-后', files.value[uid].uploadStatus)
+  }
   // *****************************************
   // 返回状态和方法
   return {

@@ -109,6 +109,7 @@ import LeftTabs from '@/components/LeftTabs.vue'
 import { ref, computed } from 'vue'
 import type { Reactive, Ref } from 'vue'
 import type {
+  UploadFile,
   UploadInstance,
   UploadProps,
   UploadRawFile,
@@ -119,14 +120,17 @@ import { uploadFileChunksThreadPool } from '@/utils/chunkUtils'
 import { genFileId, ElMessage } from 'element-plus'
 import { useUploadFileStore } from '@/stores/uploadFile'
 import request from '@/utils/request'
+import { useUserFilesStore } from '@/stores/userFiles'
 
 const uploadRef = ref<UploadInstance>()
 // const fileList = ref<UploadRawFile[]>([])
 const uploadFileStore = useUploadFileStore()
-const handlePiniaChange = (file: UploadRawFile) => {
+const userFilesStore = useUserFilesStore()
+
+const handlePiniaChange = (file: UploadFile) => {
   // uploadFileStore.addUploadFile(file)
   // uploadFileStore.initUploadFileStatus(file.uid)
-  uploadFileStore.addFile(file)
+  uploadFileStore.addFile(file, userFilesStore.lastFolderId)
 }
 
 const submitPiniaUpload = async () => {
@@ -134,7 +138,8 @@ const submitPiniaUpload = async () => {
   // const fileCount = Object.keys(uploadFileStore.files).length
   // const fileCount = Object.entries(uploadFileStore.files).length
   // console.log('文件数量:', fileCount)
-  for (const fileUid in uploadFileStore.files) {
+  for (const fileUidStr in uploadFileStore.files) {
+    const fileUid = Number(fileUidStr)
     const file = uploadFileStore.files[fileUid]
     if (file.uploadStatus !== '已准备' && file.uploadStatus !== '已暂停') continue
     uploadFileStore.setFileStatus(fileUid, '正在上传')
