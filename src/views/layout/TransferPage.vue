@@ -9,92 +9,176 @@
           </el-aside>
           <el-container>
             <el-main>
-              <button @click="mergeTest">合并测试</button>
+              <!-- <button @click="mergeTest">合并测试</button> -->
+              <el-button @click="showUpload = true">上传列表</el-button>
+              <el-button @click="showUpload = false">下载列表</el-button>
+              <!-- 怎么写v-show,再写一个文件下载的el-table -->
               <!-- 文件上传 -->
-              <el-upload
-                ref="uploadRef"
-                class=""
-                :limit="10"
-                :auto-upload="false"
-                :show-file-list="false"
-                :multiple="true"
-                @change="handlePiniaChange"
-              >
-                <template #trigger>
-                  <el-button type="primary"> 选择文件/文件夹 </el-button>
-                </template>
-                <el-button class="ml-3" type="success" @click="submitPiniaUpload">
-                  开始上传
-                </el-button>
-                <template #tip>
-                  <div class="el-upload__tip text-red">最多上3文件,新文件覆盖旧文件</div>
-                </template>
-              </el-upload>
-              <!-- 新的表 -->
-              <el-table
-                :data="Object.values(uploadFileStore.files)"
-                stripe
-                style="width: 100%; margin-top: 20px"
-              >
-                <el-table-column prop="name" label="文件名" width="180"></el-table-column>
-                <el-table-column prop="uploadStatus" label="状态" width="180"> </el-table-column>
-                <el-table-column prop="size" label="大小（字节）">
-                  <template #default="scope">
-                    {{ uploadFileStore.formatSize(scope.row.uid) }}
+              <div v-show="showUpload">
+                <el-upload
+                  ref="uploadRef"
+                  class=""
+                  :limit="10"
+                  :auto-upload="false"
+                  :show-file-list="false"
+                  :multiple="true"
+                  @change="handlePiniaChange"
+                >
+                  <template #trigger>
+                    <el-button type="primary"> 选择文件/文件夹 </el-button>
                   </template>
-                </el-table-column>
-                <el-table-column label="进度" width="180">
-                  <template #default="scope">
-                    <el-progress
-                      :percentage="uploadFileStore.uploadProgress(scope.row.uid)"
-                    ></el-progress>
-                    <!-- <span>下标: {{ getIndexByUid(scope.row.uid) }}</span> -->
+                  <el-button class="ml-3" type="success" @click="submitPiniaUpload">
+                    开始上传
+                  </el-button>
+                  <template #tip>
+                    <!-- 要做吗?新文件覆盖旧文件 -->
+                    <!-- 待做:上传时显示目标位置,浏览页面添加上传按钮 -->
+                    <div class="el-upload__tip text-red">已限制选择不可超10文件</div>
                   </template>
-                </el-table-column>
-                <!-- 移除 -->
-                <el-table-column fixed="right" label="Operations" min-width="120">
-                  <template #default="scope">
-                    <el-button
-                      v-if="uploadFileStore.getFileStatus(scope.row.uid) === '已准备'"
-                      link
-                      type="primary"
-                      size="small"
-                      @click.prevent="startPiniaUpload(scope.row.uid)"
-                    >
-                      上传
-                    </el-button>
-                    <el-button
-                      v-else-if="uploadFileStore.getFileStatus(scope.row.uid) === '正在上传'"
-                      link
-                      type="warning"
-                      size="small"
-                      @click.prevent="pauseUpload(scope.row.uid)"
-                    >
-                      暂停
-                    </el-button>
-                    <el-button
-                      v-else-if="uploadFileStore.getFileStatus(scope.row.uid) === '已暂停'"
-                      link
-                      type="primary"
-                      size="small"
-                      @click.prevent="resumeUpload(scope.row.uid)"
-                    >
-                      继续
-                    </el-button>
-                    <el-button
-                      link
-                      type="primary"
-                      size="small"
-                      @click.prevent="deleteRow(scope.$index)"
-                    >
-                      移除
-                    </el-button>
-                    <span v-if="uploadFileStore.getFileStatus(scope.row.uid) === '正在上传'">
-                      上传中...
-                    </span>
-                  </template>
-                </el-table-column>
-              </el-table>
+                </el-upload>
+                <!-- 新的表 -->
+                <el-table
+                  :data="Object.values(uploadFileStore.files)"
+                  stripe
+                  style="width: 100%; margin-top: 20px"
+                >
+                  <el-table-column prop="name" label="文件名" width="180"></el-table-column>
+                  <el-table-column prop="uploadStatus" label="上传状态" width="180">
+                  </el-table-column>
+                  <el-table-column prop="size" label="大小（字节）">
+                    <template #default="scope">
+                      {{ uploadFileStore.formatSize(scope.row.uid) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="上传进度" width="180">
+                    <template #default="scope">
+                      <el-progress
+                        :percentage="uploadFileStore.uploadProgress(scope.row.uid)"
+                      ></el-progress>
+                      <!-- <span>下标: {{ getIndexByUid(scope.row.uid) }}</span> -->
+                    </template>
+                  </el-table-column>
+                  <!-- 移除 -->
+                  <el-table-column fixed="right" label="操作" min-width="120">
+                    <template #default="scope">
+                      <el-button
+                        v-if="uploadFileStore.getFileStatus(scope.row.uid) === '已准备'"
+                        link
+                        type="primary"
+                        size="small"
+                        @click.prevent="startPiniaUpload(scope.row.uid)"
+                      >
+                        上传
+                      </el-button>
+                      <el-button
+                        v-else-if="uploadFileStore.getFileStatus(scope.row.uid) === '正在上传'"
+                        link
+                        type="warning"
+                        size="small"
+                        @click.prevent="pauseUpload(scope.row.uid)"
+                      >
+                        暂停
+                      </el-button>
+                      <el-button
+                        v-else-if="uploadFileStore.getFileStatus(scope.row.uid) === '已暂停'"
+                        link
+                        type="primary"
+                        size="small"
+                        @click.prevent="resumeUpload(scope.row.uid)"
+                      >
+                        继续
+                      </el-button>
+                      <el-button
+                        link
+                        type="primary"
+                        size="small"
+                        @click.prevent="deleteRow(scope.$index)"
+                      >
+                        移除
+                      </el-button>
+                      <span v-if="uploadFileStore.getFileStatus(scope.row.uid) === '正在上传'">
+                        上传中...
+                      </span>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              <!-- 文件下载 -->
+              <div v-show="!showUpload">
+                <!-- 下载文件列表 -->
+                <el-table
+                  v-show="!showUpload"
+                  :data="Object.values(downloadFileStore.files)"
+                  stripe
+                  style="width: 100%; margin-top: 20px"
+                >
+                  <el-table-column prop="fileName" label="文件名" width="180"></el-table-column>
+                  <el-table-column prop="downloadStatus" label="下载状态" width="180">
+                  </el-table-column>
+                  <el-table-column prop="fileSize" label="大小（字节）">
+                    <template #default="scope">
+                      {{ downloadFileStore.formatSize(scope.row.itemId) }}
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="下载进度" width="180">
+                    <template #default="scope">
+                      <el-progress
+                        :percentage="downloadFileStore.downloadProgress(scope.row.itemId)"
+                      ></el-progress>
+                    </template>
+                  </el-table-column>
+                  <!-- 移除 -->
+                  <el-table-column fixed="right" label="操作" min-width="120">
+                    <template #default="scope">
+                      <el-button
+                        v-if="downloadFileStore.getFileStatus(scope.row.itemId) === '已准备'"
+                        link
+                        type="primary"
+                        size="small"
+                        @click.prevent="
+                          downloadFile(
+                            scope.row.itemId,
+                            scope.row.fileId,
+                            scope.row.fileSize,
+                            scope.row.fileName,
+                          )
+                        "
+                      >
+                        下载
+                      </el-button>
+                      <el-button
+                        v-else-if="downloadFileStore.getFileStatus(scope.row.itemId) === '正在下载'"
+                        link
+                        type="warning"
+                        size="small"
+                        @click.prevent="pauseDownload(scope.row.itemId)"
+                      >
+                        暂停
+                      </el-button>
+                      <el-button
+                        v-else-if="downloadFileStore.getFileStatus(scope.row.itemId) === '已暂停'"
+                        link
+                        type="primary"
+                        size="small"
+                        @click.prevent="resumeDownload(scope.row.itemId)"
+                      >
+                        继续
+                      </el-button>
+                      <el-button
+                        link
+                        type="primary"
+                        size="small"
+                        @click.prevent="downloadFileStore.removeFile(scope.row.itemId)"
+                      >
+                        移除
+                      </el-button>
+                      <span v-if="downloadFileStore.getFileStatus(scope.row.itemId) === '正在下载'">
+                        下载中...
+                      </span>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
             </el-main>
             <el-footer>Footer</el-footer>
           </el-container>
@@ -121,11 +205,15 @@ import { genFileId, ElMessage } from 'element-plus'
 import { useUploadFileStore } from '@/stores/uploadFile'
 import request from '@/utils/request'
 import { useUserFilesStore } from '@/stores/userFiles'
+import { useDownloadFileStore } from '@/stores/downloadFile'
 
 const uploadRef = ref<UploadInstance>()
 // const fileList = ref<UploadRawFile[]>([])
 const uploadFileStore = useUploadFileStore()
 const userFilesStore = useUserFilesStore()
+const downloadFileStore = useDownloadFileStore()
+
+const showUpload = ref(true)
 
 const handlePiniaChange = (file: UploadFile) => {
   // uploadFileStore.addUploadFile(file)

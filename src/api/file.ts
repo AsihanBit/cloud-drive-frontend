@@ -52,6 +52,28 @@ export const downloadChunk = (itemId: number, fileId: number, start: number, end
     },
   })
 }
+
+export const createFolder = (pId: number, folderName: string) => {
+  return request.post('/user/files/createFolder', {
+    pId,
+    folderName,
+  })
+}
+export const deleteItem = (itemId: number) => {
+  return request.delete('/user/files/item', {
+    params: {
+      itemId: itemId,
+    },
+  })
+}
+
+export const shareItems = (itemIds: number[], expireType: number, accessLimit: number) => {
+  return request.post('/user/share/items', {
+    itemIds,
+    expireType,
+    accessLimit,
+  })
+}
 // export const checkFileIsExist = (fileHash: string) => {
 //   return request.get('/user/file/fileIsExist', {
 //     params: {

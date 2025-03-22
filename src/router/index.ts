@@ -3,12 +3,18 @@ import HomePage from '@/views/layout/HomePage.vue'
 import FilesPage from '@/views/layout/FilesPage.vue'
 import TransferPage from '@/views/layout/TransferPage.vue'
 import SharePage from '@/views/layout/SharePage.vue'
+import ShareLinkPage from '@/views/layout/ShareLinkPage.vue'
 
 import LoginPage from '@/views/login/LoginPage.vue'
 import RegisterPage from '@/views/login/RegisterPage.vue'
 
 import AllFilesPage from '@/views/files/AllFilesPage.vue'
 import PictureFilesPage from '@/views/files/PictureFilesPage.vue'
+
+import MyShare from '@/views/shares/MyShare.vue'
+import OtherShare from '@/views/shares/OtherShare.vue'
+import MyShareFiles from '@/views/shares/MyShareFiles.vue'
+import OtherShareFiles from '@/views/shares/OtherShareFiles.vue'
 
 const routes = [
   {
@@ -41,6 +47,37 @@ const routes = [
   {
     path: '/share',
     component: SharePage,
+    redirect: '/share/myshare',
+    children: [
+      {
+        path: '/share/myshare',
+        component: MyShare,
+        // children: [
+        //   {
+        //     path: '/share/myshare/:shareId',
+        //     component: MyShareFiles,
+        //   },
+        // ],
+      },
+      {
+        path: '/share/myshare/:shareId',
+        component: MyShareFiles,
+      },
+      {
+        path: '/share/other',
+        component: OtherShare,
+        // children: [
+        //   {
+        //     path: '/share/other/:shareId',
+        //     component: OtherShareFiles,
+        //   },
+        // ],
+      },
+      {
+        path: '/share/other/:shareId',
+        component: OtherShareFiles,
+      },
+    ],
   },
   {
     path: '/login',
@@ -49,6 +86,16 @@ const routes = [
   {
     path: '/register',
     component: RegisterPage,
+  },
+  {
+    path: '/sharelink',
+    component: ShareLinkPage,
+    children: [
+      {
+        path: '/sharelink/:shareId',
+        component: ShareLinkPage,
+      },
+    ],
   },
 ]
 

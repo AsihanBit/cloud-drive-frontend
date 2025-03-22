@@ -8,3 +8,7 @@ export const getUserItems = (itemPId: number) => {
     },
   })
 }
+// 获取用户分享条目列表
+export const getUserSharedItems = () => {
+  return request.get('/user/share/items')
+}

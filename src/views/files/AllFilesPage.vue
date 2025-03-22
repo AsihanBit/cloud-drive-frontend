@@ -3,26 +3,28 @@
     <div class="common-layout">
       <LeftFile />
       <div class="all-files">
-        <el-button type="primary" @click="downloadTest()"> 下载测试 </el-button>
-        <el-button type="primary" @click="downloadFullFile()"> 下载测试 2</el-button>
+        <el-button type="primary" @click="createNewFolder()">新增文件夹</el-button>
+        <el-button type="primary" @click="handleShareDialog()">分享选中文件</el-button>
         <!-- 文件夹路径 -->
         <!-- TODO 路径太长时,只显示根路径和最后三个文件夹路径 -->
         <div class="folder-path">
-          <span
-            v-for="(folder, index) in folderPath"
-            :key="folder.id"
-            @click="handleFolderPathClick(folder.id)"
-            style="cursor: pointer; color: blue; margin-right: 5px"
-          >
-            {{ folder.name }}
-            <span v-if="index < folderPath.length - 1"> > </span>
-          </span>
+          <template v-for="(folder, index) in folderPath" :key="folder.id">
+            <div
+              class="folder-item"
+              :class="{ 'last-item': index === folderPath.length - 1 }"
+              @click="handleFolderPathClick(folder.id)"
+            >
+              {{ folder.name }}
+            </div>
+            <div class="separator" v-if="index < folderPath.length - 1">></div>
+          </template>
         </div>
-        <el-table :data="fileList">
+        <el-table :data="fileList" @selection-change="handleSelectionChange">
+          <el-table-column type="selection" width="55" />
           <el-table-column prop="itemId" label="Item ID" width="80" />
           <el-table-column prop="itemName" label="文件名称" width="180" />
           <el-table-column prop="directoryLevel" label="文件层级" width="100" />
-          <el-table-column prop="itemType" label="类型" width="180">
+          <el-table-column prop="itemType" label="类型" width="100">
             <template #default="scope">
               <span v-if="scope.row.itemType === 1" style="cursor: pointer; color: black">
                 文件
@@ -39,12 +41,20 @@
             </template>
           </el-table-column>
           <el-table-column prop="fileId" label="File ID" width="100" />
-          <el-table-column prop="fileSize" label="文件大小" width="180" />
+          <!-- pId为什么不是驼峰了? -->
+          <el-table-column prop="pid" label="父条目id" width="100" />
+          <el-table-column prop="fileSize" label="文件大小" width="100">
+            <template #default="scope">
+              <span v-if="scope.row.itemType === 1">
+                {{ formatSize(scope.row.fileSize) }}
+              </span>
+            </template>
+          </el-table-column>
           <el-table-column prop="fileExtension" label="文件扩展名" width="100" />
-          <el-table-column label="操作" width="90">
+          <el-table-column label="操作" width="230">
             <template #default="scope">
               <el-button
-                type="primary"
+                v-if="scope.row.itemType === 1"
                 @click="
                   downloadFile(
                     scope.row.itemId,
@@ -53,8 +63,22 @@
                     scope.row.itemName,
                   )
                 "
-                >下载</el-button
+                >下载
+              </el-button>
+              <el-button
+                v-else
+                @click="
+                  handleFileClick(scope.row.itemId, scope.row.directoryLevel, scope.row.itemName)
+                "
+                >打开
+              </el-button>
+              <el-button @click="handleShareItem(scope.row.itemId)"> 分享 </el-button>
+              <el-button
+                type="danger"
+                @click="handleDeleteItem(scope.row.itemId, scope.row.itemType)"
               >
+                删除
+              </el-button>
             </template>
           </el-table-column>
           <el-table-column label="文件修改时间" width="180">
@@ -81,6 +105,44 @@
           </div>
         </el-upload>
       </div>
+      <!-- 弹出框 -->
+      <el-dialog v-model="dialogVisible" title="新建文件夹">
+        <el-form :model="folderForm">
+          <el-form-item label="文件夹名称" label-width="120px">
+            <el-input v-model="folderForm.name" autocomplete="off"></el-input>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="dialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="confirmCreateFolder">确认</el-button>
+          </span>
+        </template>
+      </el-dialog>
+      <el-dialog v-model="shareDialogVisible" title="分享文件">
+        <el-form :model="shareForm">
+          <el-form-item label="过期时间" label-width="120px">
+            <el-select v-model="shareForm.expireType" placeholder="请选择过期时间">
+              <el-option label="1天" value="0" />
+              <el-option label="7天" value="1" />
+              <el-option label="30天" value="2" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="访问次数限制" label-width="120px">
+            <el-input-number
+              v-model="shareForm.accessLimit"
+              :min="1"
+              placeholder="请输入访问次数限制"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="shareDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="confirmShareItems">确认</el-button>
+          </span>
+        </template>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -91,7 +153,9 @@ import { getUserItems } from '@/api/userItems'
 import { Folder, Picture, UploadFilled } from '@element-plus/icons-vue'
 import { useUploadFileStore } from '@/stores/uploadFile'
 import { useUserFilesStore } from '@/stores/userFiles'
-import { downloadChunk } from '@/api/file'
+import { useDownloadFileStore } from '@/stores/downloadFile'
+import { downloadChunk, createFolder, deleteItem, shareItems } from '@/api/file'
+import { ElMessage, ElMessageBox } from 'element-plus' // 导入 ElMessage
 import request from '@/utils/request'
 import type {
   UploadInstance,
@@ -102,27 +166,147 @@ import type {
   UploadRequestOptions,
 } from 'element-plus'
 import { ref, onMounted, computed } from 'vue'
+import { CHUNK_DOWNLOAD_SIZE, UNITS } from '@/constants/constants'
+
 import axios from 'axios'
 const fileList = ref([])
 const uploadRef = ref<UploadInstance>()
 const uploadFileStore = useUploadFileStore()
 const userFilesStore = useUserFilesStore()
+const downloadFileStore = useDownloadFileStore()
 
 console.log(userFilesStore.lastFolderId)
+
+// 选中文件itemIds
+const selectedItemIds = ref<number[]>([])
+
+const handleSelectionChange = (selection: any[]) => {
+  selectedItemIds.value = selection.map((file) => file.itemId)
+}
+// 弹出框相关
+const dialogVisible = ref(false)
+const folderForm = ref({
+  name: '',
+  pid: 0,
+})
+
+// 分享单个文件
+const handleShareItem = async (itemId: number) => {
+  try {
+    const response = await shareItems([itemId], expireType.value, accessLimit.value)
+    if (response.code === 1) {
+      ElMessage.success('分享成功')
+    } else {
+      ElMessage.error('分享失败')
+    }
+  } catch (error) {
+    console.error('分享失败:', error)
+  }
+}
+
+// 分享文件数据
+const itemIds = ref([1, 2, 3, 4]) // 示例数据
+const expireType = ref(1) // 示例有效期类型
+const accessLimit = ref(10) // 示例访问次数限制
+
+const shareDialogVisible = ref(false)
+const shareForm = ref({
+  expireType: '',
+  accessLimit: null as number | null,
+})
+
+// 分享多文件
+const handleShareDialog = () => {
+  if (selectedItemIds.value.length === 0) {
+    ElMessage.warning('请先选择要分享的文件')
+    return
+  }
+  shareDialogVisible.value = true
+}
+
+const confirmShareItems = async () => {
+  const expireTypeValue = parseInt(shareForm.value.expireType, 10)
+  const accessLimitValue = shareForm.value.accessLimit !== null ? shareForm.value.accessLimit : 100
+
+  try {
+    const response = await shareItems(selectedItemIds.value, expireTypeValue, accessLimitValue)
+    if (response.code === 1) {
+      ElMessage.success('分享成功')
+    } else {
+      ElMessage.error('分享失败')
+    }
+  } catch (error) {
+    console.error('分享失败:', error)
+  } finally {
+    shareDialogVisible.value = false
+    shareForm.value.expireType = ''
+    shareForm.value.accessLimit = null
+  }
+}
+
+// 创建文件夹
+const createNewFolder = () => {
+  // 获取当前文件夹的 id 作为 pid
+  const currentFolder = userFilesStore.userFilePath[userFilesStore.userFilePath.length - 1]
+  // const currentFolder = fileList.value[0].pId
+  console.log('createNewFolder', currentFolder)
+  folderForm.value.pid = currentFolder ? currentFolder.id : 0
+  dialogVisible.value = true
+}
+const confirmCreateFolder = async () => {
+  try {
+    const res = await createFolder(folderForm.value.pid, folderForm.value.name)
+    if (res.code === 1) {
+      // 刷新文件列表
+      const currentFolder = userFilesStore.userFilePath[userFilesStore.userFilePath.length - 1]
+      // const currentFolder = fileList.value[0].pId
+      const response = await getUserItems(currentFolder ? currentFolder.id : 0)
+      if (response.code === 1) {
+        fileList.value = response.data.sort((a, b) => a.itemType - b.itemType)
+      } else {
+        console.error('Failed to fetch user items:', response.msg)
+      }
+      dialogVisible.value = false
+      ElMessage.success('文件夹创建成功')
+    } else {
+      console.error('Failed to create folder:', res.msg)
+      ElMessage.error('文件夹创建失败')
+    }
+  } catch (error) {
+    console.error('Error creating folder:', error)
+    ElMessage.error('文件夹创建失败')
+  }
+}
 // 重进直接清空
 userFilesStore.userFilePath = []
 //http://localhost:8080/user/file/downloadChunk  downloadTest
 
+// 待做: formatSize pinia化
+// 格式化文件大小
+const formatSize = (fileSize: number) => {
+  let size = fileSize || 0
+  let i = 0
+  while (size >= 1024 && i < UNITS.length - 1) {
+    size /= 1024
+    i++
+  }
+  return size.toFixed(2) + ' ' + UNITS[i]
+}
 // 下载单个文件
 const downloadFile = async (itemId: number, fileId: number, fileSize: number, itemName: string) => {
   try {
-    const chunkSize = 1024 * 1024 * 5 // 每个片段的大小（50KB）
+    const chunkSize = CHUNK_DOWNLOAD_SIZE // 每个片段的大小（50KB）
     let start = 0
+    // 添加文件到下载文件存储
+    downloadFileStore.addFile(itemId, itemName, fileSize)
+
     // 请求文件系统写入权限
     const fileHandle = await window.showSaveFilePicker({
       suggestedName: itemName,
     })
     const writableStream = await fileHandle.createWritable()
+
+    downloadFileStore.setFileStatus(itemId, '正在下载')
 
     // 分片下载并写入
     while (start < fileSize) {
@@ -131,54 +315,10 @@ const downloadFile = async (itemId: number, fileId: number, fileSize: number, it
       await writableStream.write(chunkBlob)
       // await writableStream.write(chunkBlob)
       start = end + 1
-    }
 
-    // 关闭写入流
-    await writableStream.close()
-    console.log('文件下载完成')
-  } catch (error) {
-    console.error('文件下载失败:', error)
-  }
-}
-
-// 分片下载
-const downloadChunk1 = async (start, end) => {
-  try {
-    const response = await request.get('/user/file/downloadChunk', {
-      responseType: 'blob',
-      headers: {
-        Range: `bytes=${start}-${end}`,
-      },
-    })
-    // return response.data
-    // return response
-    return new Blob([response], { type: 'application/octet-stream' }) // 明确指定类型
-  } catch (error) {
-    console.error('下载文件片段失败:', error)
-    throw error
-  }
-}
-const downloadTest = async () => {
-  try {
-    // const fileSize = 1237003 // txt
-    const fileSize = 139922562
-    const chunkSize = 1024 * 1024 * 5 // 每个片段的大小（50KB）
-    let start = 0
-
-    // 请求文件系统写入权限
-    const fileHandle = await window.showSaveFilePicker({
-      suggestedName: '233.txt',
-    })
-    const writableStream = await fileHandle.createWritable()
-
-    // 分片下载并写入
-    while (start < fileSize) {
-      const end = Math.min(start + chunkSize - 1, fileSize - 1)
-      const chunkBlob = await downloadChunk1(start, end)
-
-      await writableStream.write(chunkBlob)
-      // await writableStream.write(chunkBlob)
-      start = end + 1
+      // 更新已下载的分片数量
+      downloadFileStore.incrementDownloadChunks(itemId)
+      // if(downloadFileStore.files[])
     }
 
     // 关闭写入流
@@ -216,7 +356,8 @@ onMounted(async () => {
         name: '根目录',
         directoryLevel: 0,
       })
-      fileList.value = res.data
+      // fileList.value = res.data
+      fileList.value = res.data.sort((a, b) => a.itemType - b.itemType)
     } else {
       console.error('Failed to fetch user items:', res.msg)
     }
@@ -236,6 +377,7 @@ const handleFileClick = async (itemPId: number, directoryLevel: number, itemName
         name: itemName,
       })
       fileList.value = res.data
+      fileList.value = res.data.sort((a, b) => a.itemType - b.itemType)
     } else {
       console.error('Failed to fetch user items:', res.msg)
     }
@@ -262,13 +404,46 @@ const handleFolderPathClick = async (folderId: number) => {
     if (folder) {
       const response = await getUserItems(Number(folder.id))
       if (response.code === 1) {
-        fileList.value = response.data
+        // fileList.value = response.data
+        fileList.value = response.data.sort((a, b) => a.itemType - b.itemType)
       } else {
         console.error('Failed to fetch user items:', response.msg)
       }
     }
   } catch (error) {
     console.error('Error fetching user items:', error)
+  }
+}
+
+const handleDeleteItem = async (itemId: number, itemType: number) => {
+  try {
+    // 弹出确认对话框
+    if (itemType === 0) {
+      await ElMessageBox.confirm('确定要删除该文件夹包含内容吗?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      })
+    }
+
+    const res = await deleteItem(itemId)
+    if (res.code === 1) {
+      // 刷新文件列表
+      const currentFolder = userFilesStore.userFilePath[userFilesStore.userFilePath.length - 1]
+      const response = await getUserItems(currentFolder ? currentFolder.id : 0)
+      if (response.code === 1) {
+        fileList.value = response.data.sort((a, b) => a.itemType - b.itemType)
+      } else {
+        console.error('Failed to fetch user items:', response.msg)
+      }
+      ElMessage.success('文件/文件夹删除成功')
+    } else {
+      console.error('Failed to delete item:', res.msg)
+      ElMessage.error('文件/文件夹删除失败')
+    }
+  } catch (error) {
+    console.error('Error deleting item:', error)
+    ElMessage.error('文件/文件夹删除失败')
   }
 }
 </script>
@@ -284,6 +459,42 @@ const handleFolderPathClick = async (folderId: number) => {
     .el-table {
       height: 52vh;
     }
+  }
+}
+
+.folder-path {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: #333;
+  padding: 8px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  margin-bottom: 16px;
+
+  .folder-item {
+    color: #409eff;
+    cursor: pointer;
+    margin: 0 4px;
+
+    &:hover {
+      // text-decoration: underline;
+      color: rgb(39, 223, 255);
+    }
+
+    &.last-item {
+      font-weight: bold; // 最后一个元素加粗
+      color: #000; // 最后一个元素颜色改为黑色
+    }
+    &.last-item:hover {
+      font-weight: bold; // 最后一个元素加粗
+      color: #4530fc; // 最后一个元素颜色改为黑色
+    }
+  }
+
+  .separator {
+    margin: 0 4px;
+    color: #999;
   }
 }
 </style>
@@ -367,5 +578,68 @@ const saveFile = (blob, filename) => {
   a.click()
   URL.revokeObjectURL(url)
   document.body.removeChild(a)
+}
+
+// 又一个下载demo
+// 分片下载
+const downloadChunk1 = async (start, end) => {
+  try {
+    const response = await request.get('/user/file/downloadChunk', {
+      responseType: 'blob',
+      headers: {
+        Range: `bytes=${start}-${end}`,
+      },
+    })
+    // return response.data
+    // return response
+    return new Blob([response], { type: 'application/octet-stream' }) // 明确指定类型
+  } catch (error) {
+    console.error('下载文件片段失败:', error)
+    throw error
+  }
+}
+const downloadTest = async () => {
+  try {
+    // const fileSize = 1237003 // txt
+    const fileSize = 139922562
+    const chunkSize = 1024 * 1024 * 5 // 每个片段的大小（50KB）
+    let start = 0
+
+    // 请求文件系统写入权限
+    const fileHandle = await window.showSaveFilePicker({
+      suggestedName: '233.txt',
+    })
+    const writableStream = await fileHandle.createWritable()
+
+    // 分片下载并写入
+    while (start < fileSize) {
+      const end = Math.min(start + chunkSize - 1, fileSize - 1)
+      const chunkBlob = await downloadChunk1(start, end)
+
+      await writableStream.write(chunkBlob)
+      // await writableStream.write(chunkBlob)
+      start = end + 1
+    }
+
+    // 关闭写入流
+    await writableStream.close()
+    console.log('文件下载完成')
+  } catch (error) {
+    console.error('文件下载失败:', error)
+  }
+}
+
+// 分享多文件
+const handleShareItems = async () => {
+  try {
+    const response = await shareItems(selectedItemIds.value, expireType.value, accessLimit.value)
+    if (response.code === 1) {
+      ElMessage.success('分享成功')
+    } else {
+      ElMessage.error('分享失败')
+    }
+  } catch (error) {
+    console.error('分享失败:', error)
+  }
 }
 -->

@@ -35,13 +35,33 @@ export interface FolderInfo {
 
 // 下载文件信息
 export interface DownloadFileInfo {
+  itemId: number
   fileName: string
   fileSize: number
-  downloadedSize: number // 已下载字节大小
-  downloadStatus: string // 下载状态
-  progress: number // 下载百分比
+
+  downloadStatus: string // 下载状态: 已准备 正在下载 已暂停 已完成 下载失败
+  downloadedChunks: number // 已下载分片数量
+  totalChunks: number
+  // progress: number // 下载百分比
   // 待做: 下载速度
   // fileHash: string
   // filePath: string
   // fileType: string
+}
+// 定义文件记录的接口，使用 Record 类型
+export interface DownloadFileRecord {
+  [key: number]: DownloadFileInfo // key是item_id
+}
+// 定义分享文件的接口
+export interface SharedItemInfo {
+  shareId: number
+  shareCode: string
+  username: number
+  nickname: string
+  expireType: string
+  expireTime: string
+  accessCount: string
+  accessLimit: number
+  accessStatus: number
+  createTime: number
 }

@@ -4,11 +4,11 @@ import { ref } from 'vue'
 import type { UploadFile, UploadRawFile } from 'element-plus'
 import type { FileRecord, FileInfo } from '@/types/fileType'
 // 导入常量
-import { CHUNK_SIZE } from '@/constants/constants'
+import { CHUNK_SIZE, UNITS } from '@/constants/constants'
 // const chunkSize = 5 * 1024 * 100 // 5MB
 
 const chunkSize = CHUNK_SIZE
-const units = ['B', 'KB', 'MB', 'GB', 'TB']
+// const units = ['B', 'KB', 'MB', 'GB', 'TB']
 
 export const useUploadFileStore = defineStore('uploadFile', () => {
   // ******************** 自定义对象类型 ********************
@@ -40,11 +40,11 @@ export const useUploadFileStore = defineStore('uploadFile', () => {
     const file = files.value[fileUid]
     let size = file?.size || 0
     let i = 0
-    while (size >= 1024 && i < units.length - 1) {
+    while (size >= 1024 && i < UNITS.length - 1) {
       size /= 1024
       i++
     }
-    return size.toFixed(2) + ' ' + units[i]
+    return size.toFixed(2) + ' ' + UNITS[i]
   }
 
   // 更新已上传的分片数量的方法
