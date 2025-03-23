@@ -51,34 +51,39 @@
             </template>
           </el-table-column>
           <el-table-column prop="fileExtension" label="文件扩展名" width="100" />
-          <el-table-column label="操作" width="230">
+          <el-table-column label="操作" width="300">
             <template #default="scope">
-              <el-button
-                v-if="scope.row.itemType === 1"
-                @click="
-                  downloadFile(
-                    scope.row.itemId,
-                    scope.row.fileId,
-                    scope.row.fileSize,
-                    scope.row.itemName,
-                  )
-                "
-                >下载
-              </el-button>
-              <el-button
-                v-else
-                @click="
-                  handleFileClick(scope.row.itemId, scope.row.directoryLevel, scope.row.itemName)
-                "
-                >打开
-              </el-button>
-              <el-button @click="handleShareItem(scope.row.itemId)"> 分享 </el-button>
-              <el-button
-                type="danger"
-                @click="handleDeleteItem(scope.row.itemId, scope.row.itemType)"
-              >
-                删除
-              </el-button>
+              <div class="operation-buttons">
+                <el-button
+                  v-if="scope.row.itemType === 1"
+                  @click="
+                    downloadFile(
+                      scope.row.itemId,
+                      scope.row.fileId,
+                      scope.row.fileSize,
+                      scope.row.itemName,
+                    )
+                  "
+                  >下载
+                </el-button>
+                <el-button v-if="scope.row.itemType === 1" @click="previewFile(scope.row.itemId)"
+                  >预览
+                </el-button>
+                <el-button
+                  v-else
+                  @click="
+                    handleFileClick(scope.row.itemId, scope.row.directoryLevel, scope.row.itemName)
+                  "
+                  >打开
+                </el-button>
+                <el-button @click="handleShareItem(scope.row.itemId)"> 分享 </el-button>
+                <el-button
+                  type="danger"
+                  @click="handleDeleteItem(scope.row.itemId, scope.row.itemType)"
+                >
+                  删除
+                </el-button>
+              </div>
             </template>
           </el-table-column>
           <el-table-column label="文件修改时间" width="180">
@@ -446,6 +451,28 @@ const handleDeleteItem = async (itemId: number, itemType: number) => {
     ElMessage.error('文件/文件夹删除失败')
   }
 }
+
+// 文件预览
+const previewFile = async (itemId: number) => {
+  try {
+    console.log('itemId:', itemId)
+
+    const res = await request.get(`/user/view/preview?itemId=${itemId}`)
+    console.log('Response:', res) // 打印完整的响应
+    if (res) {
+      const previewUrl = res // 后端返回的预览链接
+      if (previewUrl) {
+        window.open(previewUrl) // 打开预览页面
+      } else {
+        console.error('previewUrl is undefined')
+      }
+    } else {
+      console.error('Response is empty')
+    }
+  } catch (error) {
+    console.error('Error:', error)
+  }
+}
 </script>
 
 <style lang="less" scoped>
@@ -496,6 +523,16 @@ const handleDeleteItem = async (itemId: number, itemType: number) => {
     margin: 0 4px;
     color: #999;
   }
+}
+
+.operation-buttons {
+  display: flex;
+  justify-content: flex-end; /* 右对齐 */
+  // gap: 8px; /* 按钮之间的间距 */
+}
+
+.operation-buttons .el-button {
+  min-width: 50px; /* 统一按钮宽度 */
 }
 </style>
 <!--

@@ -26,10 +26,11 @@ import request from '@/utils/request'
 const testFileView = async () => {
   try {
     console.log('testFileView')
-    const res = await request.get('/user/view/file')
+    // const res = await request.get('/user/view/file')
+    const res = await request.get('/user/view/previewtest')
     console.log('Response:', res) // 打印完整的响应
-    if (res && res.data) {
-      const previewUrl = res.data.previewUrl // 后端返回的预览链接
+    if (res) {
+      const previewUrl = res // 后端返回的预览链接
       if (previewUrl) {
         window.open(previewUrl) // 打开预览页面
       } else {
