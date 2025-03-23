@@ -20,7 +20,10 @@
               </el-form-item>
               <!-- 验证码 -->
               <el-form-item label="验证码" prop="captcha">
-                <el-input v-model="loginForm.captcha" placeholder="请输入验证码"></el-input>
+                <el-input
+                  v-model="loginForm.captcha"
+                  placeholder="请输入验证码(四位字符)"
+                ></el-input>
               </el-form-item>
               <!-- 提交 -->
               <el-form-item>

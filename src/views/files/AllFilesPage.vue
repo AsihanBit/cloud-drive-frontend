@@ -3,8 +3,19 @@
     <div class="common-layout">
       <LeftFile />
       <div class="all-files">
-        <el-button type="primary" @click="createNewFolder()">新增文件夹</el-button>
-        <el-button type="primary" @click="handleShareDialog()">分享选中文件</el-button>
+        <div class="button-group">
+          <el-button type="primary" @click="createNewFolder()">新增文件夹</el-button>
+          <el-button type="primary" @click="handleShareDialog()">分享选中文件</el-button>
+
+          <div class="search-box">
+            <el-input v-model="searchKeyword" placeholder="关键字" @keyup.enter="handleSearch">
+              <template #suffix>
+                <el-button icon="el-icon-search" @click="handleSearch">搜索</el-button>
+              </template>
+            </el-input>
+          </div>
+        </div>
+
         <!-- 文件夹路径 -->
         <!-- TODO 路径太长时,只显示根路径和最后三个文件夹路径 -->
         <div class="folder-path">
@@ -22,7 +33,12 @@
         <el-table :data="fileList" @selection-change="handleSelectionChange">
           <el-table-column type="selection" width="55" />
           <el-table-column prop="itemId" label="Item ID" width="80" />
-          <el-table-column prop="itemName" label="文件名称" width="180" />
+          <!-- <el-table-column prop="itemName" label="文件名称" width="180" /> -->
+          <el-table-column prop="itemName" label="文件名称" width="180">
+            <template v-slot="scope">
+              <span v-html="scope.row.itemName"></span>
+            </template>
+          </el-table-column>
           <el-table-column prop="directoryLevel" label="文件层级" width="100" />
           <el-table-column prop="itemType" label="类型" width="100">
             <template #default="scope">
@@ -473,6 +489,38 @@ const previewFile = async (itemId: number) => {
     console.error('Error:', error)
   }
 }
+
+// 文件搜索
+const searchKeyword = ref('')
+const handleSearch = async () => {
+  if (!searchKeyword.value) {
+    ElMessage.warning('请输入搜索关键字')
+    return
+  }
+
+  try {
+    const res = await request.get(`/user/search/keyword?keyword=${searchKeyword.value}`)
+    if (res.code === 1) {
+      userFilesStore.userFilePath = userFilesStore.userFilePath.slice(0, 1)
+
+      fileList.value = res.data.sort((a, b) => a.itemType - b.itemType)
+    } else {
+      console.error('搜索失败:', res.msg)
+      ElMessage.error('搜索失败')
+    }
+  } catch (error) {
+    console.error('搜索请求失败:', error)
+    ElMessage.error('搜索请求失败')
+  }
+}
+
+const highlightKeyword = (text: string, keyword: string) => {
+  if (!keyword) {
+    return text
+  }
+  const regex = new RegExp(`(${keyword})`, 'gi')
+  return text.replace(regex, '<em class="em-highlight">$1</em>')
+}
 </script>
 
 <style lang="less" scoped>
@@ -485,6 +533,10 @@ const previewFile = async (itemId: number) => {
     height: 100%;
     .el-table {
       height: 52vh;
+      ::v-deep em {
+        color: rgb(255, 94, 0);
+        font-style: normal;
+      }
     }
   }
 }
@@ -533,6 +585,17 @@ const previewFile = async (itemId: number) => {
 
 .operation-buttons .el-button {
   min-width: 50px; /* 统一按钮宽度 */
+}
+.button-group {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+  margin-bottom: 10px;
+
+  .search-box {
+    width: 250px;
+    margin-left: 900px;
+  }
 }
 </style>
 <!--

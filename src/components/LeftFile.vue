@@ -12,10 +12,10 @@
         <el-icon><Folder /></el-icon>
         <template #title>全部</template>
       </el-menu-item>
-      <el-menu-item index="/files/pic">
+      <!-- <el-menu-item index="/files/pic">
         <el-icon><Picture /></el-icon>
         <template #title>图片</template>
-      </el-menu-item>
+      </el-menu-item> -->
       <!-- <el-menu-item index="3">
         <el-icon><Share /></el-icon>
         <template #title>视频</template>
