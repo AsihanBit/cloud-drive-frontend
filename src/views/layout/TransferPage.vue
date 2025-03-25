@@ -2,7 +2,9 @@
   <div>
     <div class="common-layout">
       <el-container>
-        <el-header>Header</el-header>
+        <el-header>
+          <h3>文件传输</h3>
+        </el-header>
         <el-container>
           <el-aside>
             <LeftTabs></LeftTabs>
@@ -128,6 +130,13 @@
                     </template>
                   </el-table-column>
                   <!-- 移除 -->
+                  <!-- @click.prevent="
+                          downloadFile(
+                            scope.row.itemId,
+                            scope.row.fileId,
+                            scope.row.fileSize,
+                            scope.row.fileName,)
+                        " -->
                   <el-table-column fixed="right" label="操作" min-width="120">
                     <template #default="scope">
                       <el-button
@@ -135,32 +144,26 @@
                         link
                         type="primary"
                         size="small"
-                        @click.prevent="
-                          downloadFile(
-                            scope.row.itemId,
-                            scope.row.fileId,
-                            scope.row.fileSize,
-                            scope.row.fileName,
-                          )
-                        "
                       >
                         下载
                       </el-button>
+                      <!--
+                        @click.prevent="pauseDownload(scope.row.itemId)"
+                       -->
                       <el-button
                         v-else-if="downloadFileStore.getFileStatus(scope.row.itemId) === '正在下载'"
                         link
                         type="warning"
                         size="small"
-                        @click.prevent="pauseDownload(scope.row.itemId)"
                       >
                         暂停
                       </el-button>
+                      <!-- @click.prevent="resumeDownload(scope.row.itemId)" -->
                       <el-button
                         v-else-if="downloadFileStore.getFileStatus(scope.row.itemId) === '已暂停'"
                         link
                         type="primary"
                         size="small"
-                        @click.prevent="resumeDownload(scope.row.itemId)"
                       >
                         继续
                       </el-button>
@@ -238,9 +241,12 @@ const submitPiniaUpload = async () => {
         ElMessage.success(`文件 ${file.name} 上传成功`)
       }
     } catch (error) {
-      ElMessage.error(`Failed to upload file: ${error.message}`)
       uploadFileStore.setFileStatus(fileUid, '上传失败')
     }
+    // catch (error) {
+    //   ElMessage.error(`Failed to upload file: ${error.message}`)
+    //   uploadFileStore.setFileStatus(fileUid, '上传失败')
+    // }
   }
 }
 
@@ -280,7 +286,7 @@ const startPiniaUpload = async (fileUid: number) => {
       ElMessage.success(`文件 ${file.name} 上传成功`)
     }
   } catch (error) {
-    ElMessage.error(`Failed to upload file: ${error.message}`)
+    // ElMessage.error(`Failed to upload file: ${error.message}`)
     uploadFileStore.setFileStatus(fileUid, '上传失败')
   }
 }
@@ -302,13 +308,14 @@ const resumeUpload = (fileUid: number) => {
   startPiniaUpload(fileUid)
 }
 
-const deleteRow = (index: number) => {
-  console.log('移除文件', index)
-
-  const fileUid = fileList.value[index].uid
-  fileList.value.splice(index, 1)
+const deleteRow = (fileUid: number) => {
+  console.log('移除文件', fileUid)
   uploadFileStore.removeFile(fileUid)
-  console.log(fileList.value)
+
+  // const fileUid = fileList.value[index].uid
+  // fileList.value.splice(index, 1)
+  // uploadFileStore.removeFile(fileUid)
+  // console.log(fileList.value)
 }
 
 // ********* 测试方法 *********
@@ -321,11 +328,12 @@ const mergeTest = async () => {
 <style scoped lang="less">
 .common-layout {
   .el-container {
-    background-color: #0f5757;
+    // background-color: #0f5757;
     .el-header {
-      background-color: #f5ff67;
+      // background-color: #f5ff67;
+      background: linear-gradient(to right, #ffdfa2, #fff59e);
       text-align: center;
-      min-height: 8vh;
+      // min-height: 8vh;
     }
     .el-container {
       .el-aside {
@@ -333,15 +341,31 @@ const mergeTest = async () => {
       }
     }
     .el-main {
-      background-color: #6bb5ff;
+      // background-color: #6bb5ff;
+      background: linear-gradient(to bottom, #d7eeff, #8dcbff);
       text-align: center;
       min-height: 82vh;
     }
     .el-footer {
-      background-color: #b6ffa7;
+      // background-color: #b6ffa7;
+      background: linear-gradient(to bottom, #8dcbff, #1fffa2);
       text-align: center;
       min-height: 8vh;
     }
+  }
+}
+
+.el-main {
+  animation: fadeIn 0.3s ease-in-out;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>

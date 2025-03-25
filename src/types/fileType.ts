@@ -1,4 +1,46 @@
 import type { UploadRawFile, UploadFile, UploadStatus } from 'element-plus'
+// 定义响应的格式
+export interface Result {
+  code: number
+  msg: string
+  data: JSON
+}
+// 用户信息
+export interface UserInfo {
+  userId: number
+  username: string
+  token: string
+}
+declare global {
+  interface Window {
+    showSaveFilePicker(options?: {
+      suggestedName?: string
+      types?: Array<{
+        description?: string
+        accept: Record<string, string[]>
+      }>
+    }): Promise<FileSystemFileHandle>
+  }
+}
+// declare global {
+//   interface FileSystemFileHandle {
+//     createWritable(options?: { keepExistingData?: boolean }): Promise<FileSystemWritableFileStream>
+//   }
+// }
+// 定义分片的接口
+export interface ChunkInfo {
+  identifier: number
+  fileHash: string
+  totalChunks: number
+
+  start: number
+  end: number
+  index: number
+  hash: string
+  blob: Blob
+
+  // hash: string
+}
 
 // 定义单个文件信息的接口
 export interface FileInfo extends UploadFile {

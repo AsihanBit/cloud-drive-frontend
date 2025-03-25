@@ -42,7 +42,8 @@ const route = useRoute()
 const folderPath = ref<{ id: number; name: string }[]>([])
 
 onMounted(async () => {
-  const shareId = route.params.shareId as number
+  // const shareId = route.params.shareId as number
+  const shareId = Number(route.params.shareId)
   // const res = await getSharedItems(route.params.shareId, null)
   // sharedFiles.value = res.data
   await loadFolderContent(shareId, null)
@@ -77,7 +78,9 @@ const handleFolderPathClick = async (pItemId: number) => {
     // 截断路径到点击的文件夹
     folderPath.value = folderPath.value.slice(0, index + 1)
     // 加载该文件夹的内容
-    const shareId = route.params.shareId as number
+    // const shareId = route.params.shareId as number
+    const shareId = Number(route.params.shareId)
+
     await loadFolderContent(shareId, pItemId)
   }
 }

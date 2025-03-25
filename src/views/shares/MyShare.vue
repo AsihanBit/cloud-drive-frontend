@@ -3,7 +3,8 @@
     我的分享
     <!-- <el-button type="primary" @click="resetExpireTime()">重置有效期(未完成)</el-button> -->
     <el-button type="primary" @click="delShare()">删除选中分享</el-button>
-    <el-button type="primary" @click="removeExpired()">移除失效分享(未完成)</el-button>
+    <!-- @click="removeExpired()" -->
+    <el-button type="primary">移除失效分享(未完成)</el-button>
 
     <el-table
       :data="sharedItemsStore.userSharedItems"
@@ -55,7 +56,7 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="shareDialogVisible = false">取消</el-button>
+          <el-button @click="resetExpireDialogVisible = false">取消</el-button>
           <el-button type="primary" @click="confirmResetExpireBtn()">确认</el-button>
         </span>
       </template>
@@ -68,6 +69,8 @@ import { ref, onMounted } from 'vue'
 import { useSharedItemsStore } from '@/stores/sharedItems'
 import { deleteSharedItems, resetShareExpire } from '@/api/share'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus' // 导入 ElMessage
+
 const sharedItemsStore = useSharedItemsStore()
 const router = useRouter()
 
@@ -105,7 +108,8 @@ const shareForm = ref({
   accessLimit: null as number | null,
 })
 
-const selectedShareId = ref<number | null>(null)
+// const selectedShareId = ref<number | null>(null)
+const selectedShareId = ref<number>(0)
 const resetExpireBtn = (shareId: number, event: Event) => {
   event.stopPropagation() // 阻止事件冒泡
   selectedShareId.value = shareId

@@ -2,7 +2,9 @@
   <div>
     <div class="common-layout">
       <el-container>
-        <el-header>Header</el-header>
+        <el-header>
+          <h3>用户文件</h3>
+        </el-header>
         <el-container>
           <el-aside>
             <LeftTabs></LeftTabs>
@@ -11,7 +13,7 @@
             <el-main>
               <RouterView />
             </el-main>
-            <el-footer>Footer</el-footer>
+            <el-footer><h4>页尾</h4></el-footer>
           </el-container>
         </el-container>
       </el-container>
@@ -26,11 +28,12 @@ import LeftTabs from '@/components/LeftTabs.vue'
 <style lang="less" scoped>
 .common-layout {
   .el-container {
-    background-color: #0f5757;
+    // background-color: #0f5757;
     .el-header {
-      background-color: #f5ff67;
+      // background-color: #f5ff67;
+      background: linear-gradient(to right, #ffdfa2, #fff59e);
       text-align: center;
-      min-height: 8vh;
+      // min-height: 8vh;
     }
     .el-container {
       .el-aside {
@@ -38,17 +41,34 @@ import LeftTabs from '@/components/LeftTabs.vue'
       }
     }
     .el-main {
-      background-color: #6bb5ff;
+      // background-color: #6bb5ff;
+      background: linear-gradient(to bottom, #d7eeff, #8dcbff);
       text-align: center;
       min-height: 82vh;
 
       padding: 40px 0 0 0;
     }
     .el-footer {
-      background-color: #b6ffa7;
+      // background-color: #b6ffa7;
+      background: linear-gradient(to bottom, #8dcbff, #1fffa2);
+
       text-align: center;
       min-height: 8vh;
     }
+  }
+}
+
+.el-main {
+  animation: fadeIn 0.3s ease-in-out;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>

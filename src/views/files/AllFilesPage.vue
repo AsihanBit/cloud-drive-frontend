@@ -123,6 +123,7 @@
           <div class="el-upload__text">
             拖动文件到此处 或 <em>点击上传</em>
             <div class="el-upload__tip">选择上传文件后请到传输页查看</div>
+            <div class="el-upload__tip">*体验阶段 所有上传/下载操作后都需到传输页确认*</div>
           </div>
         </el-upload>
       </div>
@@ -178,6 +179,8 @@ import { useDownloadFileStore } from '@/stores/downloadFile'
 import { downloadChunk, createFolder, deleteItem, shareItems } from '@/api/file'
 import { ElMessage, ElMessageBox } from 'element-plus' // 导入 ElMessage
 import request from '@/utils/request'
+import type { Result } from '@/types/fileType'
+
 import type {
   UploadInstance,
   UploadProps,
@@ -190,7 +193,8 @@ import { ref, onMounted, computed } from 'vue'
 import { CHUNK_DOWNLOAD_SIZE, UNITS } from '@/constants/constants'
 
 import axios from 'axios'
-const fileList = ref([])
+// const fileList = ref([]) as Array<any>
+const fileList = ref<any[]>([]) // 明确类型为 any[]
 const uploadRef = ref<UploadInstance>()
 const uploadFileStore = useUploadFileStore()
 const userFilesStore = useUserFilesStore()
@@ -214,7 +218,11 @@ const folderForm = ref({
 // 分享单个文件
 const handleShareItem = async (itemId: number) => {
   try {
-    const response = await shareItems([itemId], expireType.value, accessLimit.value)
+    const response = (await shareItems(
+      [itemId],
+      expireType.value,
+      accessLimit.value,
+    )) as unknown as Result
     if (response.code === 1) {
       ElMessage.success('分享成功')
     } else {
@@ -250,7 +258,11 @@ const confirmShareItems = async () => {
   const accessLimitValue = shareForm.value.accessLimit !== null ? shareForm.value.accessLimit : 100
 
   try {
-    const response = await shareItems(selectedItemIds.value, expireTypeValue, accessLimitValue)
+    const response = (await shareItems(
+      selectedItemIds.value,
+      expireTypeValue,
+      accessLimitValue,
+    )) as unknown as Result
     if (response.code === 1) {
       ElMessage.success('分享成功')
     } else {
@@ -276,14 +288,22 @@ const createNewFolder = () => {
 }
 const confirmCreateFolder = async () => {
   try {
-    const res = await createFolder(folderForm.value.pid, folderForm.value.name)
+    const res = (await createFolder(
+      folderForm.value.pid,
+      folderForm.value.name,
+    )) as unknown as Result
     if (res.code === 1) {
       // 刷新文件列表
       const currentFolder = userFilesStore.userFilePath[userFilesStore.userFilePath.length - 1]
       // const currentFolder = fileList.value[0].pId
-      const response = await getUserItems(currentFolder ? currentFolder.id : 0)
+      const response = (await getUserItems(
+        currentFolder ? currentFolder.id : 0,
+      )) as unknown as Result
       if (response.code === 1) {
-        fileList.value = response.data.sort((a, b) => a.itemType - b.itemType)
+        // as any[]
+        fileList.value = (response.data as unknown as Array<any>).sort(
+          (a, b) => a.itemType - b.itemType,
+        )
       } else {
         console.error('Failed to fetch user items:', response.msg)
       }
@@ -321,30 +341,64 @@ const downloadFile = async (itemId: number, fileId: number, fileSize: number, it
     // 添加文件到下载文件存储
     downloadFileStore.addFile(itemId, itemName, fileSize)
 
-    // 请求文件系统写入权限
-    const fileHandle = await window.showSaveFilePicker({
-      suggestedName: itemName,
-    })
-    const writableStream = await fileHandle.createWritable()
+    // 如果浏览器支持 showSaveFilePicker
+    // window.showSaveFilePicker, 测试环境,不进入if时可以写 0
+    if (window.showSaveFilePicker) {
+      // 请求文件系统写入权限
+      const fileHandle = await window.showSaveFilePicker({
+        suggestedName: itemName,
+      })
+      const writableStream = await fileHandle.createWritable()
 
-    downloadFileStore.setFileStatus(itemId, '正在下载')
+      downloadFileStore.setFileStatus(itemId, '正在下载')
 
-    // 分片下载并写入
-    while (start < fileSize) {
-      const end = Math.min(start + chunkSize - 1, fileSize - 1)
-      const chunkBlob = await downloadChunk(itemId, fileId, start, end)
-      await writableStream.write(chunkBlob)
-      // await writableStream.write(chunkBlob)
-      start = end + 1
+      // 分片下载并写入
+      while (start < fileSize) {
+        const end = Math.min(start + chunkSize - 1, fileSize - 1)
+        const chunkBlob = (await downloadChunk(
+          itemId,
+          fileId,
+          start,
+          end,
+        )) as unknown as WriteParams
+        await writableStream.write(chunkBlob)
+        // await writableStream.write(chunkBlob)
+        start = end + 1
 
-      // 更新已下载的分片数量
-      downloadFileStore.incrementDownloadChunks(itemId)
-      // if(downloadFileStore.files[])
+        // 更新已下载的分片数量
+        downloadFileStore.incrementDownloadChunks(itemId)
+        // if(downloadFileStore.files[])
+      }
+      // 关闭写入流
+      await writableStream.close()
+      console.log('文件下载完成')
+    } else {
+      // 回退方案：使用传统的文件下载方式
+      const blobParts: BlobPart[] = []
+      while (start < fileSize) {
+        const end = Math.min(start + chunkSize - 1, fileSize - 1)
+        const chunkBlob = (await downloadChunk(itemId, fileId, start, end)) as unknown as Blob
+        // const chunkResponse = await downloadChunk(itemId, fileId, start, end)
+        // const chunkBlob = new Blob([chunkResponse.data], { type: 'application/octet-stream' }) // 转换为 Blob
+
+        blobParts.push(chunkBlob)
+        start = end + 1
+
+        // 更新已下载的分片数量
+        downloadFileStore.incrementDownloadChunks(itemId)
+      }
+
+      const blob = new Blob(blobParts, { type: 'application/octet-stream' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = itemName
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      console.log('文件下载完成')
     }
-
-    // 关闭写入流
-    await writableStream.close()
-    console.log('文件下载完成')
   } catch (error) {
     console.error('文件下载失败:', error)
   }
@@ -370,7 +424,7 @@ const handleChange = (file: UploadFile) => {
 
 onMounted(async () => {
   try {
-    const res = await getUserItems(0)
+    const res = (await getUserItems(0)) as unknown as Result
     if (res.code === 1) {
       userFilesStore.userFilePath.push({
         id: 0,
@@ -378,7 +432,8 @@ onMounted(async () => {
         directoryLevel: 0,
       })
       // fileList.value = res.data
-      fileList.value = res.data.sort((a, b) => a.itemType - b.itemType)
+      // (res.data as unknown as Array<any>)
+      fileList.value = (res.data as unknown as Array<any>).sort((a, b) => a.itemType - b.itemType)
     } else {
       console.error('Failed to fetch user items:', res.msg)
     }
@@ -390,15 +445,15 @@ onMounted(async () => {
 const handleFileClick = async (itemPId: number, directoryLevel: number, itemName: string) => {
   console.log('Clicked on itemPId:', itemPId)
   try {
-    const res = await getUserItems(itemPId)
+    const res = (await getUserItems(itemPId)) as unknown as Result
     if (res.code === 1) {
       userFilesStore.userFilePath.push({
         id: itemPId,
         directoryLevel: directoryLevel + 1,
         name: itemName,
       })
-      fileList.value = res.data
-      fileList.value = res.data.sort((a, b) => a.itemType - b.itemType)
+      // fileList.value = res.data
+      fileList.value = (res.data as unknown as Array<any>).sort((a, b) => a.itemType - b.itemType)
     } else {
       console.error('Failed to fetch user items:', res.msg)
     }
@@ -423,10 +478,12 @@ const handleFolderPathClick = async (folderId: number) => {
     // 获取新的文件列表
     const folder = userFilesStore.getFolderById(folderId)
     if (folder) {
-      const response = await getUserItems(Number(folder.id))
+      const response = (await getUserItems(Number(folder.id))) as unknown as Result
       if (response.code === 1) {
         // fileList.value = response.data
-        fileList.value = response.data.sort((a, b) => a.itemType - b.itemType)
+        fileList.value = (response.data as unknown as Array<any>).sort(
+          (a, b) => a.itemType - b.itemType,
+        )
       } else {
         console.error('Failed to fetch user items:', response.msg)
       }
@@ -447,13 +504,17 @@ const handleDeleteItem = async (itemId: number, itemType: number) => {
       })
     }
 
-    const res = await deleteItem(itemId)
+    const res = (await deleteItem(itemId)) as unknown as Result
     if (res.code === 1) {
       // 刷新文件列表
       const currentFolder = userFilesStore.userFilePath[userFilesStore.userFilePath.length - 1]
-      const response = await getUserItems(currentFolder ? currentFolder.id : 0)
+      const response = (await getUserItems(
+        currentFolder ? currentFolder.id : 0,
+      )) as unknown as Result
       if (response.code === 1) {
-        fileList.value = response.data.sort((a, b) => a.itemType - b.itemType)
+        fileList.value = (response.data as unknown as Array<any>).sort(
+          (a, b) => a.itemType - b.itemType,
+        )
       } else {
         console.error('Failed to fetch user items:', response.msg)
       }
@@ -473,12 +534,13 @@ const previewFile = async (itemId: number) => {
   try {
     console.log('itemId:', itemId)
 
-    const res = await request.get(`/user/view/preview?itemId=${itemId}`)
+    const res = (await request.get(`/user/view/preview?itemId=${itemId}`)) as Result
     console.log('Response:', res) // 打印完整的响应
-    if (res) {
-      const previewUrl = res // 后端返回的预览链接
+    if (res.code === 1) {
+      // as URL
+      const previewUrl = res.data as unknown as string // 后端返回的预览链接
       if (previewUrl) {
-        window.open(previewUrl) // 打开预览页面
+        window.open(new URL(previewUrl)) // 打开预览页面
       } else {
         console.error('previewUrl is undefined')
       }
@@ -499,11 +561,11 @@ const handleSearch = async () => {
   }
 
   try {
-    const res = await request.get(`/user/search/keyword?keyword=${searchKeyword.value}`)
+    const res = (await request.get(`/user/search/keyword?keyword=${searchKeyword.value}`)) as Result
     if (res.code === 1) {
       userFilesStore.userFilePath = userFilesStore.userFilePath.slice(0, 1)
 
-      fileList.value = res.data.sort((a, b) => a.itemType - b.itemType)
+      fileList.value = (res.data as unknown as Array<any>).sort((a, b) => a.itemType - b.itemType)
     } else {
       console.error('搜索失败:', res.msg)
       ElMessage.error('搜索失败')
@@ -529,11 +591,12 @@ const highlightKeyword = (text: string, keyword: string) => {
   height: 76vh;
 
   .all-files {
-    background-color: rosybrown;
+    background-color: rgba(188, 143, 143, 0.61);
     height: 100%;
     .el-table {
-      height: 52vh;
-      ::v-deep em {
+      height: 43vh;
+      // ::v-deep em {
+      :deep(em) {
         color: rgb(255, 94, 0);
         font-style: normal;
       }
@@ -598,148 +661,3 @@ const highlightKeyword = (text: string, keyword: string) => {
   }
 }
 </style>
-<!--
-// 获取文件大小
-const getFileSize = async () => {
-  try {
-    const response = await axios.head('/downloadChunk')
-    return parseInt(response.headers['content-length'], 10)
-  } catch (error) {
-    console.error('获取文件大小失败:', error)
-    throw error
-  }
-}
-
-// 下载文件 内存存储
-const downloadTest1 = async () => {
-  try {
-    // 获取文件大小
-    // const fileSize = await getFileSize()
-    const fileSize = 1237003
-    const chunkSize = 1024 * 500 // 每个片段的大小（1MB）
-    const chunks = []
-    let start = 0
-
-    // 分片下载
-    while (start < fileSize) {
-      const end = Math.min(start + chunkSize - 1, fileSize - 1)
-      const chunkBlob = await downloadChunk(start, end)
-      chunks.push(chunkBlob)
-      start = end + 1
-    }
-
-    // 合并片段
-    const mergedBlob = mergeBlobs(chunks)
-
-    // 保存文件
-    saveFile(mergedBlob, '233.txt')
-    console.log('文件下载完成')
-  } catch (error) {
-    console.error('文件下载失败:', error)
-  }
-}
-// 合并 Blob 片段
-const mergeBlobs = (blobs) => {
-  return new Blob(blobs, { type: 'application/octet-stream' })
-}
-// 保存文件到本地
-const saveFile = (blob, filename) => {
-  const link = document.createElement('a')
-  link.href = URL.createObjectURL(blob)
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(link.href)
-}
-
-// 一次整个下载
-const downloadTest = async () => {
-  try {
-    const response = await request.get('/user/file/downloadChunk', {
-      responseType: 'blob',
-      // onDownloadProgress: progressEvent => {
-      //   progress.value = Math.round(
-      //     (progressEvent.loaded / progressEvent.total) * 100
-      //   )
-      // }
-    })
-    saveFile(response, 'downloaded_file.txt')
-  } catch (err) {
-    throw new Error(`完整文件下载失败: ${err.message}`)
-  }
-}
-// 保存文件到本地
-const saveFile = (blob, filename) => {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.style.display = 'none'
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  URL.revokeObjectURL(url)
-  document.body.removeChild(a)
-}
-
-// 又一个下载demo
-// 分片下载
-const downloadChunk1 = async (start, end) => {
-  try {
-    const response = await request.get('/user/file/downloadChunk', {
-      responseType: 'blob',
-      headers: {
-        Range: `bytes=${start}-${end}`,
-      },
-    })
-    // return response.data
-    // return response
-    return new Blob([response], { type: 'application/octet-stream' }) // 明确指定类型
-  } catch (error) {
-    console.error('下载文件片段失败:', error)
-    throw error
-  }
-}
-const downloadTest = async () => {
-  try {
-    // const fileSize = 1237003 // txt
-    const fileSize = 139922562
-    const chunkSize = 1024 * 1024 * 5 // 每个片段的大小（50KB）
-    let start = 0
-
-    // 请求文件系统写入权限
-    const fileHandle = await window.showSaveFilePicker({
-      suggestedName: '233.txt',
-    })
-    const writableStream = await fileHandle.createWritable()
-
-    // 分片下载并写入
-    while (start < fileSize) {
-      const end = Math.min(start + chunkSize - 1, fileSize - 1)
-      const chunkBlob = await downloadChunk1(start, end)
-
-      await writableStream.write(chunkBlob)
-      // await writableStream.write(chunkBlob)
-      start = end + 1
-    }
-
-    // 关闭写入流
-    await writableStream.close()
-    console.log('文件下载完成')
-  } catch (error) {
-    console.error('文件下载失败:', error)
-  }
-}
-
-// 分享多文件
-const handleShareItems = async () => {
-  try {
-    const response = await shareItems(selectedItemIds.value, expireType.value, accessLimit.value)
-    if (response.code === 1) {
-      ElMessage.success('分享成功')
-    } else {
-      ElMessage.error('分享失败')
-    }
-  } catch (error) {
-    console.error('分享失败:', error)
-  }
-}
--->

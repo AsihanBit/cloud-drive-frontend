@@ -3,7 +3,7 @@
     <div class="common-layout">
       <el-container>
         <el-header>
-          <h3>首页</h3>
+          <h3>介绍</h3>
         </el-header>
         <el-container>
           <el-aside>
@@ -52,7 +52,7 @@ const testFileView = async () => {
     const res = await request.get('/user/view/previewtest')
     console.log('Response:', res) // 打印完整的响应
     if (res) {
-      const previewUrl = res // 后端返回的预览链接
+      const previewUrl = res.data as unknown as string // 后端返回的预览链接
       if (previewUrl) {
         window.open(previewUrl) // 打开预览页面
       } else {
@@ -70,11 +70,13 @@ const testFileView = async () => {
 <style lang="less" scoped>
 .common-layout {
   .el-container {
-    background-color: #0f5757;
+    // background-color: #0f5757;
     .el-header {
-      background-color: #f5ff67;
+      // background-color: #f5ff67;
+      // background: #42a5f5;
+      background: linear-gradient(to right, #ffdfa2, #fff59e);
       text-align: center;
-      min-height: 8vh;
+      // min-height: 8vh;
     }
     .el-container {
       .el-aside {
@@ -82,12 +84,15 @@ const testFileView = async () => {
       }
     }
     .el-main {
-      background-color: #6bb5ff;
+      background: linear-gradient(to bottom, #d7eeff, #8dcbff);
+      // background-color: #6bb5ff;
       text-align: center;
       min-height: 82vh;
     }
     .el-footer {
-      background-color: #b6ffa7;
+      // background-color: #b6ffa7;
+      background: linear-gradient(to bottom, #8dcbff, #1fffa2);
+
       text-align: center;
       height: 10vh;
       a {
@@ -105,6 +110,19 @@ const testFileView = async () => {
         }
       }
     }
+  }
+}
+.el-main {
+  animation: fadeIn 0.3s ease-in-out;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>

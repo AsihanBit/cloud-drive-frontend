@@ -1,4 +1,5 @@
 import { createChunk } from '@/utils/backup/createChunk'
+import type { ChunkInfo } from '@/types/fileType'
 
 onmessage = async (e) => {
   try {
@@ -50,7 +51,7 @@ onmessage = async (e) => {
         continue
       }
 
-      const chunkData = await createChunk(file, i, CHUNK_SIZE)
+      const chunkData = (await createChunk(file, i, CHUNK_SIZE)) as ChunkInfo
       console.log('切片完成')
       chunkData.identifier = identifier
       chunkData.fileHash = fileHash

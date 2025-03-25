@@ -37,14 +37,14 @@ export default defineConfig({
     },
   },
   base: './',
-  build: {
-    rollupOptions: {
-      input: 'src/main.ts',
-      output: {
-        entryFileNames: '[name].js',
-        chunkFileNames: '[name]-[hash].js',
-        assetFileNames: '[name]-[hash].[ext]',
-      },
-    },
-  },
+  // build: {
+  //   rollupOptions: {
+  //     input: 'src/main.ts',
+  //     output: {
+  //       entryFileNames: '[name].js',
+  //       chunkFileNames: '[name]-[hash].js',
+  //       assetFileNames: '[name]-[hash].[ext]',
+  //     },
+  //   },
+  // },
 })

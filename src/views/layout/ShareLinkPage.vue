@@ -2,7 +2,9 @@
   <div>
     <div class="common-layout">
       <el-container>
-        <el-header> 这里是外部分享 </el-header>
+        <el-header>
+          <h3>分享链接</h3>
+        </el-header>
         <el-container>
           <!-- <el-aside> </el-aside> -->
           <el-container>
@@ -146,11 +148,15 @@ import { getSharedItems, getOtherSharedItems, saveSelectedItems } from '@/api/sh
 import { useUserFilesStore } from '@/stores/userFiles'
 import { getUserItems } from '@/api/userItems'
 import { formatSize, formatUpdateTime } from '@/utils/fileInfoUtils'
+import { ElNotification } from 'element-plus'
+import type { Result } from '@/types/fileType'
+
 const userFilesStore = useUserFilesStore()
 
 const route = useRoute()
 // 分享的文件
-const sharedFiles = ref([])
+// const sharedFiles = ref([])
+const sharedFiles = ref<any[]>([]) // 明确 sharedFiles 是 any[] 类型
 // 显示提取/转存
 const extractSuccess = ref(false)
 // 当前分享id
@@ -160,7 +166,7 @@ const shareFolderPath = ref<{ id: number; name: string }[]>([])
 
 // 定义表单数据
 const shareForm = ref({
-  shareId: '',
+  shareId: null,
   extractCode: '',
 })
 
@@ -170,9 +176,11 @@ const handleShareLink = async () => {
   console.log('Share ID:', shareId)
   console.log('提取码:', extractCode)
   // 在这里调用处理函数
-  const res = await getShareByShareCode(shareId, extractCode)
+  const tempShareId = shareId === null ? 0 : shareId
+  const res = (await getShareByShareCode(tempShareId, extractCode)) as unknown as Result
   if (res.code === 1) {
-    sharedFiles.value = res.data
+    // as unknown
+    sharedFiles.value = res.data as unknown as Array<any>
     extractSuccess.value = true
     currentShareId.value = shareId // 存储当前的 shareId
     shareFolderPath.value = [{ id: 0, name: '根目录' }] // 初始化路径
@@ -237,11 +245,13 @@ const saveSelectedFiles = () => {
 
 // ============================转存路径选择器========================
 // 转存路径
-const fileList = ref([])
+// const fileList = ref([])
+const fileList = ref<any[]>([]) // 明确类型为 any[]
+
 const myFolderPath = ref<{ id: number; name: string }[]>([])
 
 const loadMyFolderPath = async () => {
-  const res = await getUserItems(0)
+  const res = (await getUserItems(0)) as unknown as Result
   if (res.code === 1) {
     // userFilesStore.userFilePath.push({
     //   id: 0,
@@ -249,7 +259,7 @@ const loadMyFolderPath = async () => {
     //   directoryLevel: 0,
     // })
     // fileList.value = res.data
-    fileList.value = res.data.sort((a, b) => a.itemType - b.itemType)
+    fileList.value = (res.data as unknown as Array<any>).sort((a, b) => a.itemType - b.itemType)
     myFolderPath.value = [{ id: 0, name: '根目录' }]
   } else {
     console.error('Failed to fetch user items:', res.msg)
@@ -258,7 +268,7 @@ const loadMyFolderPath = async () => {
 const handleMyFileClick = async (itemPId: number, directoryLevel: number, itemName: string) => {
   console.log('Clicked on itemPId:', itemPId)
   try {
-    const res = await getUserItems(itemPId)
+    const res = (await getUserItems(itemPId)) as unknown as Result
     if (res.code === 1) {
       // userFilesStore.userFilePath.push({
       //   id: itemPId,
@@ -266,9 +276,9 @@ const handleMyFileClick = async (itemPId: number, directoryLevel: number, itemNa
       //   name: itemName,
       // })
       myFolderPath.value.push({ id: itemPId, name: itemName })
-      fileList.value = res.data
+      // fileList.value = res.data as any[]
       // 文件夹在前 文件在后
-      fileList.value = res.data.sort((a, b) => a.itemType - b.itemType)
+      fileList.value = (res.data as unknown as Array<any>).sort((a, b) => a.itemType - b.itemType)
     } else {
       console.error('Failed to fetch user items:', res.msg)
     }
@@ -284,7 +294,7 @@ const handleMyFolderPathClick = async (pItemId: number) => {
     // 截断路径到点击的文件夹
     myFolderPath.value = myFolderPath.value.slice(0, index + 1)
     // 加载该文件夹的内容
-    const shareId = route.params.shareId as number
+    // const shareId = route.params.shareId as number
     const res = await getUserItems(pItemId)
     fileList.value = res.data
   }
@@ -297,7 +307,7 @@ const confirmSaveSelectedFilesBtn = async () => {
   console.log('confirmSaveSelectedFilesBtn', saveToFolder.id)
   console.log('保存的条目数组', selectedItemIds.value)
   const res = await saveSelectedItems(
-    shareForm.value.shareId,
+    shareForm.value.shareId as unknown as number,
     shareForm.value.extractCode,
     saveToFolder.id,
     selectedItemIds.value,
@@ -310,7 +320,8 @@ const confirmSaveSelectedFilesBtn = async () => {
   .el-container {
     background-color: #0f5757;
     .el-header {
-      background-color: #f5ff67;
+      // background-color: #f5ff67;
+      background: linear-gradient(to right, #ffdfa2, #fff59e);
       text-align: center;
       min-height: 8vh;
     }
@@ -320,7 +331,8 @@ const confirmSaveSelectedFilesBtn = async () => {
       }
     }
     .el-main {
-      background-color: #6bb5ff;
+      // background-color: #6bb5ff;
+      background: linear-gradient(to bottom, #d7eeff, #8dcbff);
       text-align: center;
       min-height: 82vh;
       .share-imput {
@@ -338,7 +350,9 @@ const confirmSaveSelectedFilesBtn = async () => {
       height: 400px;
     }
     .el-footer {
-      background-color: #b6ffa7;
+      // background-color: #b6ffa7;
+      background: linear-gradient(to bottom, #8dcbff, #1fffa2);
+
       text-align: center;
       min-height: 8vh;
     }
