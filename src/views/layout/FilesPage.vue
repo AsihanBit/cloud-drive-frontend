@@ -3,7 +3,7 @@
     <div class="common-layout">
       <el-container>
         <el-header>
-          <h3>用户文件</h3>
+          <h3>用户文件 <span style="font-size: 12px">- jwt TTL:2h</span></h3>
         </el-header>
         <el-container>
           <el-aside>
@@ -31,7 +31,7 @@ import LeftTabs from '@/components/LeftTabs.vue'
     // background-color: #0f5757;
     .el-header {
       // background-color: #f5ff67;
-      background: linear-gradient(to right, #ffdfa2, #fff59e);
+      background: linear-gradient(to right, #fff7ac, #ffc7a5);
       text-align: center;
       // min-height: 8vh;
     }

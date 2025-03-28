@@ -5,7 +5,7 @@
       <div class="all-files">
         <div class="button-group">
           <el-button type="primary" @click="createNewFolder()">新增文件夹</el-button>
-          <el-button type="primary" @click="handleShareDialog()">分享选中文件</el-button>
+          <el-button type="primary" @click="handleShareItemsDialog()">分享选中文件</el-button>
 
           <div class="search-box">
             <el-input v-model="searchKeyword" placeholder="关键字" @keyup.enter="handleSearch">
@@ -127,7 +127,8 @@
           </div>
         </el-upload>
       </div>
-      <!-- 弹出框 -->
+      <!-- ==================== 弹出框 ==================== -->
+      <!-- 新建文件夹 -->
       <el-dialog v-model="dialogVisible" title="新建文件夹">
         <el-form :model="folderForm">
           <el-form-item label="文件夹名称" label-width="120px">
@@ -141,6 +142,32 @@
           </span>
         </template>
       </el-dialog>
+      <!-- 分享单个文件 -->
+      <el-dialog v-model="singleShareDialogVisible" title="分享文件">
+        <el-form :model="singleShareForm">
+          <el-form-item label="过期时间" label-width="120px">
+            <el-select v-model="singleShareForm.expireType" placeholder="请选择过期时间">
+              <el-option label="1天" value="0" />
+              <el-option label="7天" value="1" />
+              <el-option label="30天" value="2" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="访问次数限制" label-width="120px">
+            <el-input-number
+              v-model="singleShareForm.accessLimit"
+              :min="1"
+              placeholder="请输入访问次数限制"
+            />
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="singleShareDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="confirmSingleShareItem">确认</el-button>
+          </span>
+        </template>
+      </el-dialog>
+      <!-- 分享多个文件 -->
       <el-dialog v-model="shareDialogVisible" title="分享文件">
         <el-form :model="shareForm">
           <el-form-item label="过期时间" label-width="120px">
@@ -165,6 +192,23 @@
           </span>
         </template>
       </el-dialog>
+      <!-- 分享成功弹出框 -->
+      <el-dialog v-model="shareSuccessDialogVisible" title="分享成功">
+        <el-form>
+          <el-form-item label="分享链接" label-width="120px">
+            <el-input v-model="shareSuccessData.shareLink" readonly></el-input>
+          </el-form-item>
+          <el-form-item label="提取码" label-width="120px">
+            <el-input v-model="shareSuccessData.shareCode" readonly></el-input>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="shareSuccessDialogVisible = false">关闭</el-button>
+            <el-button type="primary" @click="copyShareLink">复制分享链接</el-button>
+          </span>
+        </template>
+      </el-dialog>
     </div>
   </div>
 </template>
@@ -179,7 +223,11 @@ import { useDownloadFileStore } from '@/stores/downloadFile'
 import { downloadChunk, createFolder, deleteItem, shareItems } from '@/api/file'
 import { ElMessage, ElMessageBox } from 'element-plus' // 导入 ElMessage
 import request from '@/utils/request'
-import type { Result } from '@/types/fileType'
+import type { Result, ShareResultDTO } from '@/types/fileType'
+
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 import type {
   UploadInstance,
@@ -216,36 +264,77 @@ const folderForm = ref({
 })
 
 // 分享单个文件
-const handleShareItem = async (itemId: number) => {
+const singleShareDialogVisible = ref(false)
+const singleShareItemId = ref<number | null>(null)
+const singleShareForm = ref({
+  expireType: '',
+  accessLimit: null as number | null,
+})
+const handleShareItem = (itemId: number) => {
+  singleShareItemId.value = itemId
+  singleShareDialogVisible.value = true
+}
+const confirmSingleShareItem = async () => {
+  if (singleShareItemId.value === null) {
+    ElMessage.error('文件ID无效')
+    return
+  }
+
+  const expireTypeValue = parseInt(singleShareForm.value.expireType, 10)
+  const accessLimitValue =
+    singleShareForm.value.accessLimit !== null ? singleShareForm.value.accessLimit : 100
+
   try {
     const response = (await shareItems(
-      [itemId],
-      expireType.value,
-      accessLimit.value,
+      [singleShareItemId.value],
+      expireTypeValue,
+      accessLimitValue,
     )) as unknown as Result
+    const shareResult = response.data as unknown as ShareResultDTO
     if (response.code === 1) {
       ElMessage.success('分享成功')
+      handleShareSuccess(shareResult.shareStr, shareResult.shareCode, shareResult.shareLink)
     } else {
       ElMessage.error('分享失败')
     }
   } catch (error) {
     console.error('分享失败:', error)
+  } finally {
+    singleShareDialogVisible.value = false
+    singleShareForm.value.expireType = ''
+    singleShareForm.value.accessLimit = null
   }
 }
 
-// 分享文件数据
-const itemIds = ref([1, 2, 3, 4]) // 示例数据
-const expireType = ref(1) // 示例有效期类型
-const accessLimit = ref(10) // 示例访问次数限制
+// 单文件分享测试
+// const itemIds = ref([1, 2, 3, 4]) // 示例数据
+// const expireType = ref(1) // 示例有效期类型
+// const accessLimit = ref(10) // 示例访问次数限制
+// const handleShareItemOrigin = async (itemId: number) => {
+//   try {
+//     const response = (await shareItems(
+//       [itemId],
+//       expireType.value,
+//       accessLimit.value,
+//     )) as unknown as Result
+//     if (response.code === 1) {
+//       ElMessage.success('分享成功')
+//     } else {
+//       ElMessage.error('分享失败')
+//     }
+//   } catch (error) {
+//     console.error('分享失败:', error)
+//   }
+// }
 
+// 分享多文件
 const shareDialogVisible = ref(false)
 const shareForm = ref({
   expireType: '',
   accessLimit: null as number | null,
 })
 
-// 分享多文件
-const handleShareDialog = () => {
+const handleShareItemsDialog = () => {
   if (selectedItemIds.value.length === 0) {
     ElMessage.warning('请先选择要分享的文件')
     return
@@ -263,8 +352,11 @@ const confirmShareItems = async () => {
       expireTypeValue,
       accessLimitValue,
     )) as unknown as Result
+    const shareResult = response.data as unknown as ShareResultDTO
+
     if (response.code === 1) {
       ElMessage.success('分享成功')
+      handleShareSuccess(shareResult.shareStr, shareResult.shareCode, shareResult.shareLink)
     } else {
       ElMessage.error('分享失败')
     }
@@ -274,6 +366,31 @@ const confirmShareItems = async () => {
     shareDialogVisible.value = false
     shareForm.value.expireType = ''
     shareForm.value.accessLimit = null
+  }
+}
+
+// 分享成功弹出框
+const shareSuccessDialogVisible = ref(false)
+const shareSuccessData = ref({
+  shareStr: '',
+  shareCode: '',
+  shareLink: '',
+})
+const handleShareSuccess = async (shareStr: string, shareCode: string, shareLink: string) => {
+  shareSuccessDialogVisible.value = true
+  shareSuccessData.value.shareStr = shareStr
+  shareSuccessData.value.shareCode = shareCode
+  shareSuccessData.value.shareLink = shareLink
+}
+
+// 复制分享链接
+const copyShareLink = async () => {
+  try {
+    await navigator.clipboard.writeText(shareSuccessData.value.shareLink)
+    ElMessage.success('分享链接已复制到剪贴板')
+  } catch (err) {
+    console.error('无法复制到剪贴板:', err)
+    ElMessage.error('无法复制分享链接')
   }
 }
 
@@ -541,6 +658,8 @@ const previewFile = async (itemId: number) => {
       const previewUrl = res.data as unknown as string // 后端返回的预览链接
       if (previewUrl) {
         window.open(new URL(previewUrl)) // 打开预览页面
+        // 导航到加载页面，并传递预览URL作为查询参数
+        // router.push({ name: 'LoadingPage', query: { previewUrl } })
       } else {
         console.error('previewUrl is undefined')
       }

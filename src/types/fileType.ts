@@ -107,3 +107,10 @@ export interface SharedItemInfo {
   accessStatus: number
   createTime: number
 }
+// 分享成功回调DTO
+export interface ShareResultDTO {
+  shareId: number
+  shareStr: string
+  shareCode: string
+  shareLink: string
+}

@@ -20,6 +20,7 @@ import component from 'element-plus/es/components/tree-select/src/tree-select-op
 
 */
 // import component from 'element-plus/es/components/tree-select/src/tree-select-option.mjs'
+import LoadingPage from '@/views/layout/LoadingPage.vue'
 
 const routes = [
   {
@@ -115,6 +116,11 @@ const routes = [
         component: () => import('@/views/layout/ShareLinkPage.vue'),
       },
     ],
+  },
+  {
+    path: '/loading',
+    component: LoadingPage,
+    // component: () => import('@/views/layout/LoadingPage.vue'),
   },
 ]
 

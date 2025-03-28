@@ -74,7 +74,7 @@ const testFileView = async () => {
     .el-header {
       // background-color: #f5ff67;
       // background: #42a5f5;
-      background: linear-gradient(to right, #ffdfa2, #fff59e);
+      background: linear-gradient(to right, #fff7ac, #ffc7a5);
       text-align: center;
       // min-height: 8vh;
     }

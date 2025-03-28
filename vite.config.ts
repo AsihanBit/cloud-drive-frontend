@@ -30,8 +30,13 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
         // changeOrigin: true,
+        // Http
+        target: 'http://localhost:8080',
+        // Https
+        // target: 'https://localhost:8080',
+        // 忽略证书:(也可以告诉 Node.js 信任该证书 方式1.设置环境变量 方式2.或在代码中动态添加)
+        secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
