@@ -3,7 +3,7 @@
     <div class="common-layout">
       <el-container>
         <el-header>
-          <h3>用户文件 <span style="font-size: 12px">- jwt TTL:2h</span></h3>
+          <h3>用户文件 <span style="font-size: 12px">- 令牌期限:2h</span></h3>
         </el-header>
         <el-container>
           <el-aside>

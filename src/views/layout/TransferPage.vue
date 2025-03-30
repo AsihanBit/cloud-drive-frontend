@@ -183,7 +183,7 @@
                 </el-table>
               </div>
             </el-main>
-            <el-footer>Footer</el-footer>
+            <el-footer><h4>页尾</h4></el-footer>
           </el-container>
         </el-container>
       </el-container>
