@@ -10,7 +10,7 @@
           </div>
           <div class="github-link">
             <div>
-              <p>Github 链接</p>
+              <p>Github 项目介绍</p>
             </div>
             <img style="width: 25px" src="@/assets/github-mark-white.png" />
             <a href="https://github.com/AsihanBit/cloud-drive-frontend" target="_blank">前端</a>

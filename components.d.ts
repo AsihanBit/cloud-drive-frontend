@@ -29,6 +29,7 @@ declare module 'vue' {
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
     ElUpload: typeof import('element-plus/es')['ElUpload']
+    GithubFooter: typeof import('./src/components/GithubFooter.vue')['default']
     LeftFile: typeof import('./src/components/LeftFile.vue')['default']
     LeftHome: typeof import('./src/components/LeftHome.vue')['default']
     LeftTabs: typeof import('./src/components/LeftTabs.vue')['default']

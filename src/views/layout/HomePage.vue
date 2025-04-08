@@ -2,8 +2,10 @@
   <div>
     <div class="common-layout">
       <el-container>
-        <el-header>
-          <h3>介绍</h3>
+        <el-header class="common-header">
+          <div class="header-content">
+            <h3 class="header-title">项目介绍</h3>
+          </div>
         </el-header>
         <el-container>
           <el-aside>
@@ -30,11 +32,7 @@
               <p>Git, Fork</p>
               <h5>*持续开发中*</h5>
             </el-main>
-            <el-footer>
-              <p>Github 链接</p>
-              <a href="https://github.com/AsihanBit/cloud-drive-frontend" target="_blank">前端</a>
-              <a href="https://github.com/AsihanBit/cloud-drive-backend" target="_blank">后端</a>
-            </el-footer>
+            <el-footer> <GithubFooter></GithubFooter> </el-footer>
           </el-container>
         </el-container>
       </el-container>
@@ -44,6 +42,8 @@
 
 <script lang="ts" setup>
 import LeftTabs from '@/components/LeftTabs.vue'
+import GithubFooter from '@/components/GithubFooter.vue'
+
 import request from '@/utils/request'
 const testFileView = async () => {
   try {
@@ -70,13 +70,26 @@ const testFileView = async () => {
 <style lang="less" scoped>
 .common-layout {
   .el-container {
-    // background-color: #0f5757;
-    .el-header {
-      // background-color: #f5ff67;
-      // background: #42a5f5;
-      background: linear-gradient(to right, #fff7ac, #ffc7a5);
-      text-align: center;
-      // min-height: 8vh;
+    .common-header {
+      background: linear-gradient(135deg, #758ae7 0%, #764ba2 100%);
+      color: white;
+      display: flex;
+      align-items: center; // 确保内容垂直居中
+      // height: 64px; // 固定高度
+
+      .header-content {
+        // display: flex;
+        // align-items: center; // 确保内容垂直居中
+        // width: 100%; // 确保内容区域占满header
+        padding: 0 20px; // 添加一些内边距
+
+        .header-title {
+          font-size: 20px;
+          letter-spacing: 4px;
+          // margin: 0; // 移除默认margin
+          // line-height: 1; // 设置行高为1
+        }
+      }
     }
     .el-container {
       .el-aside {
@@ -92,23 +105,8 @@ const testFileView = async () => {
     .el-footer {
       // background-color: #b6ffa7;
       background: linear-gradient(to bottom, #8dcbff, #1fffa2);
-
       text-align: center;
       height: 10vh;
-      a {
-        display: inline-block;
-        // margin: 5px;
-        padding: 1px 9px;
-        // background-color: #007bff;
-        color: rgb(145, 0, 212);
-        text-decoration: none;
-        border-radius: 4px;
-        // transition: background-color 0.3s ease;
-
-        &:hover {
-          background-color: #ffa844;
-        }
-      }
     }
   }
 }

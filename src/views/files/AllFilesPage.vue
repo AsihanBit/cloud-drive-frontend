@@ -6,7 +6,7 @@
         <div class="button-group">
           <el-button type="primary" @click="createNewFolder()">新增文件夹</el-button>
           <el-button type="primary" @click="handleShareItemsDialog()">分享选中文件</el-button>
-
+          <span style="font-size: 12px">(*新账户有些默认文件)</span>
           <div class="search-box">
             <el-input v-model="searchKeyword" placeholder="关键字" @keyup.enter="handleSearch">
               <template #suffix>
@@ -15,7 +15,6 @@
             </el-input>
           </div>
         </div>
-
         <!-- 文件夹路径 -->
         <!-- TODO 路径太长时,只显示根路径和最后三个文件夹路径 -->
         <div class="folder-path">
@@ -712,6 +711,7 @@ const highlightKeyword = (text: string, keyword: string) => {
   .all-files {
     background-color: rgba(188, 143, 143, 0.61);
     height: 100%;
+    // width: 100%;
     .el-table {
       height: 43vh;
       // ::v-deep em {
@@ -768,15 +768,20 @@ const highlightKeyword = (text: string, keyword: string) => {
 .operation-buttons .el-button {
   min-width: 50px; /* 统一按钮宽度 */
 }
+
 .button-group {
   display: flex;
-  justify-content: center;
+  justify-content: center; // 改为 space-between 而不是 center
   margin-top: 10px;
   margin-bottom: 10px;
+  white-space: nowrap; /* 禁止文字换行 */
+  align-items: center; /* 垂直居中 */
+  padding: 0 20px; // 添加左右内边距防止内容贴边
 
   .search-box {
     width: 250px;
-    margin-left: 900px;
+    margin-left: auto; // 改为 auto 而不是固定 900px
+    margin-right: 20px; // 添加右边距
   }
 }
 </style>

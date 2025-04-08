@@ -2,8 +2,10 @@
   <div>
     <div class="common-layout">
       <el-container>
-        <el-header>
-          <h3>文件传输</h3>
+        <el-header class="common-header">
+          <div class="header-content">
+            <h3 class="header-title">文件传输</h3>
+          </div>
         </el-header>
         <el-container>
           <el-aside>
@@ -38,7 +40,7 @@
                     <div class="el-upload__tip text-red">已限制选择不可超10文件</div>
                   </template>
                 </el-upload>
-                <!-- 新的表 -->
+                <!-- 上传文件列表 -->
                 <el-table
                   :data="Object.values(uploadFileStore.files)"
                   stripe
@@ -94,7 +96,7 @@
                         link
                         type="primary"
                         size="small"
-                        @click.prevent="deleteRow(scope.$index)"
+                        @click.prevent="uploadFileStore.removeFile(scope.row.uid)"
                       >
                         移除
                       </el-button>
@@ -183,7 +185,7 @@
                 </el-table>
               </div>
             </el-main>
-            <el-footer><h4>页尾</h4></el-footer>
+            <el-footer> <GithubFooter></GithubFooter> </el-footer>
           </el-container>
         </el-container>
       </el-container>
@@ -193,6 +195,8 @@
 
 <script setup lang="ts">
 import LeftTabs from '@/components/LeftTabs.vue'
+import GithubFooter from '@/components/GithubFooter.vue'
+
 import { ref, computed } from 'vue'
 import type { Reactive, Ref } from 'vue'
 import type {
@@ -308,15 +312,15 @@ const resumeUpload = (fileUid: number) => {
   startPiniaUpload(fileUid)
 }
 
-const deleteRow = (fileUid: number) => {
-  console.log('移除文件', fileUid)
-  uploadFileStore.removeFile(fileUid)
+// const deleteRow = (fileUid: number) => {
+//   console.log('移除文件', fileUid)
+//   uploadFileStore.removeFile(fileUid)
 
-  // const fileUid = fileList.value[index].uid
-  // fileList.value.splice(index, 1)
-  // uploadFileStore.removeFile(fileUid)
-  // console.log(fileList.value)
-}
+//   // const fileUid = fileList.value[index].uid
+//   // fileList.value.splice(index, 1)
+//   // uploadFileStore.removeFile(fileUid)
+//   // console.log(fileList.value)
+// }
 
 // ********* 测试方法 *********
 
@@ -329,11 +333,31 @@ const mergeTest = async () => {
 .common-layout {
   .el-container {
     // background-color: #0f5757;
-    .el-header {
-      // background-color: #f5ff67;
-      background: linear-gradient(to right, #ffdfa2, #fff59e);
-      text-align: center;
-      // min-height: 8vh;
+    .common-header {
+      background: linear-gradient(135deg, #758ae7 0%, #764ba2 100%);
+      color: white;
+      display: flex;
+      align-items: center; // 确保内容垂直居中
+      // height: 64px; // 固定高度
+
+      .header-content {
+        // display: flex;
+        // align-items: center; // 确保内容垂直居中
+        // width: 100%; // 确保内容区域占满header
+        padding: 0 20px; // 添加一些内边距
+
+        .header-title {
+          font-size: 20px;
+          letter-spacing: 4px;
+          // margin: 0; // 移除默认margin
+          // line-height: 1; // 设置行高为1
+        }
+      }
+    }
+    .el-container {
+      .el-aside {
+        width: 120px;
+      }
     }
     .el-container {
       .el-aside {
@@ -350,7 +374,7 @@ const mergeTest = async () => {
       // background-color: #b6ffa7;
       background: linear-gradient(to bottom, #8dcbff, #1fffa2);
       text-align: center;
-      min-height: 8vh;
+      min-height: 10vh;
     }
   }
 }
