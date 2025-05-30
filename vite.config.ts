@@ -28,6 +28,10 @@ export default defineConfig({
     },
   },
   server: {
+    port: 9000, // 修改为您想要的端口号
+    open: true, // 自动打开浏览器（可选）
+    host: true, // 允许局域网访问（可选）
+    // strictPort: true, // 如果端口被占用则直接退出，而不是尝试下一个可用端口（可选）
     proxy: {
       '/api': {
         // changeOrigin: true,

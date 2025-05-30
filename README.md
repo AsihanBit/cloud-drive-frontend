@@ -23,6 +23,7 @@
 | 名称<img width="100"/> |                            预览图                            |
 | :--------------------: | :----------------------------------------------------------: |
 |        登录页面        | <img src="./assets/readme/1.1-loginPage.png" width="60%" />  |
+|        注册页面        | <img src="./assets/readme/1.1-registerPage.png" width="60%" /> |
 |          主页          |  <img src="./assets/readme/1.2-mainPage.png" width="50%" />  |
 |        文件列表        |  <img src="./assets/readme/1.3-filePage.png" width="60%" />  |
 |        文件传输        | <img src="./assets/readme/1.4-transferPage.png" width="60%" /> |
@@ -36,6 +37,8 @@
 # :star2: 功能介绍
 
 #### 🔒 用户权限：使用 JWT 实现用户认证和权限控制。
+
+#### 🤖图形验证：支持多种图形验证方式，通过后端授予登录授权令牌，基于缓存进行有效期管理。
 
 ####  :file_folder: 空间管理：用户可以按层级管理存储文件，采用了树形邻接表存储目录信息。
 
