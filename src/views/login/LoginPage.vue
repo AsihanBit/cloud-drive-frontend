@@ -518,6 +518,44 @@ const captchaFunction = () => {
     .initTAC('./tac', config, style)
     .then((tac: any) => {
       tacInstance = tac
+      
+      // 添加请求拦截器来处理验证码生成API的响应
+      tac.config.addRequestChain({
+        postRequest: (requestType: string, requestOptions: any, response: any, tacConfig: any) => {
+          // 只拦截验证码生成请求的响应
+          if (requestType === 'requestCaptchaData') {
+            console.log('验证码生成API响应:', response)
+            
+            // 检查响应码，如果是0则表示生成太频繁
+            if (response && response.code === 0) {
+              console.log('验证码生成太频繁，显示错误提示')
+              ElNotification({
+                title: '请求失败',
+                message: '验证码生成太频繁，请稍后再试',
+                type: 'error',
+                duration: 3000,
+              })
+              
+              // 关闭验证码窗口
+              showCaptcha.value = false
+              if (tacInstance) {
+                try {
+                  tacInstance.destroyWindow()
+                } catch (error) {
+                  console.log('销毁验证码实例失败:', error)
+                }
+              }
+              
+              // 返回 false 停止后续处理
+              return false
+            }
+          }
+          
+          // 返回 true 继续正常处理
+          return true
+        }
+      })
+      
       try {
         tac.init()
       } catch (error) {
