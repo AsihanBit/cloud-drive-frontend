@@ -20,6 +20,7 @@ export async function uploadFileChunksThreadPool(fileUid: number) {
     // 获取Pinia里的文件
     const uploadFileStore = useUploadFileStore()
     const uploadFile = uploadFileStore.files[fileUid] as FileInfo
+    // console.log('要上传的文件对象', uploadFile)
     const file = uploadFile.raw
     console.log('uploadFileChunksThreadPool - file对象', file, typeof file)
 
@@ -30,15 +31,21 @@ export async function uploadFileChunksThreadPool(fileUid: number) {
 
     // 调用新文件判断接口
     try {
-      const { data } = await checkFileIsExist(fileHash, uploadFile.name, uploadFile.targetPathId)
-      console.log('文件存在性检查', data)
-      if (data) {
-        console.log('文件已存在，停止上传')
-        uploadFile.uploadedChunks = uploadFile.totalChunks
-        resolve(1)
+      const res = await checkFileIsExist(fileHash, uploadFile.name, uploadFile.targetPathId,uploadFile.raw.size)
+      console.log('文件存在性检查', res)
+
+        
+      // 直接返回对应的状态码，让调用者处理
+      if (res.data === 1 || res.data === 2 || res.data === 3) {
+        if (res.data === 1) {
+          // 文件已存在，标记为已完成
+          uploadFile.uploadedChunks = uploadFile.totalChunks
+        }
+        resolve(res.data)
         return
-        // return 1 // 文件已存在，停止上传
       }
+
+    
     } catch (error) {
       console.error('检查文件是否存在时出错:', error)
       reject(0)

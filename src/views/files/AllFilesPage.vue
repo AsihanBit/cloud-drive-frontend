@@ -453,9 +453,29 @@ const formatSize = (fileSize: number) => {
 const downloadFile = async (itemId: number, fileId: number, fileSize: number, itemName: string) => {
   try {
     const chunkSize = CHUNK_DOWNLOAD_SIZE // 每个片段的大小（50KB）
-    let start = 0
+
+
+ // 先检查文件是否可下载（发送一个首次请求）
+ try {
+      const testResponse = await downloadChunk(itemId, fileId, 0, Math.min(1, fileSize - 1))
+      // 如果是JSON格式的错误响应
+      if (testResponse instanceof Blob && testResponse.type === 'application/json') {
+        const errorText = await new Response(testResponse).text();
+        const errorData = JSON.parse(errorText);
+        ElMessage.error(errorData.msg || '文件无法下载');
+        return;
+      }
+    } catch (checkError) {
+      console.error('检查文件可下载状态失败:', checkError);
+      ElMessage.error('文件可能被封禁或不存在');
+      return;
+    }
+
+
     // 添加文件到下载文件存储
     downloadFileStore.addFile(itemId, itemName, fileSize)
+    let start = 0
+
 
     // 如果浏览器支持 showSaveFilePicker
     // window.showSaveFilePicker, 测试环境,不进入if时可以写 0
@@ -477,6 +497,7 @@ const downloadFile = async (itemId: number, fileId: number, fileSize: number, it
           start,
           end,
         )) as unknown as WriteParams
+        console.log('chunkBlob', chunkBlob)
         await writableStream.write(chunkBlob)
         // await writableStream.write(chunkBlob)
         start = end + 1

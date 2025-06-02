@@ -21,12 +21,13 @@
       <el-table-column prop="accessCount" label="访问数量" width="100"></el-table-column>
       <el-table-column prop="accessLimit" label="访问限制" width="100"></el-table-column>
       <el-table-column prop="shareStatus" label="分享状态" width="80"></el-table-column>
+      <el-table-column prop="banStatus" label="可用状态" width="80"></el-table-column>
       <el-table-column prop="createTime" label="分享时间" width="180"></el-table-column>
       <!-- 放置按钮 -->
       <el-table-column label="操作" width="220">
         <template #default="scope">
           <!-- 创建分享链接 -->
-          <el-button type="primary" @click="resetExpireBtn(scope.row.shareId, $event)">
+          <el-button type="primary" @click="createShareLink(scope.row.shareId, $event)">
             分享链接
           </el-button>
           <!-- 重置有效期按钮 -->
@@ -61,13 +62,30 @@
         </span>
       </template>
     </el-dialog>
+    <!-- 分享成功弹出框 -->
+    <el-dialog v-model="shareSuccessDialogVisible" title="分享成功">
+        <el-form>
+          <el-form-item label="分享链接" label-width="120px">
+            <el-input v-model="shareSuccessData.shareLink" readonly></el-input>
+          </el-form-item>
+          <el-form-item label="提取码" label-width="120px">
+            <el-input v-model="shareSuccessData.shareCode" readonly></el-input>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="shareSuccessDialogVisible = false">关闭</el-button>
+            <el-button type="primary" @click="copyShareLink">复制分享链接</el-button>
+          </span>
+        </template>
+      </el-dialog>
   </div>
 </template>
 <script lang="ts" setup>
 import { getUserSharedItems } from '@/api/userItems'
 import { ref, onMounted } from 'vue'
 import { useSharedItemsStore } from '@/stores/sharedItems'
-import { deleteSharedItems, resetShareExpire } from '@/api/share'
+import { deleteSharedItems, resetShareExpire, getShareLink } from '@/api/share'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus' // 导入 ElMessage
 
@@ -143,6 +161,39 @@ const confirmResetExpireBtn = async () => {
   sharedItemsStore.getAllSharedItems()
 }
 
-const createShareLink = () => {}
+const createShareLink = async (shareId: number, event: Event) => {
+  event.stopPropagation() // 阻止事件冒泡
+  const res = await getShareLink(shareId)
+  console.log(res)
+  if (res.code === 1) {
+    handleShareSuccess(res.data.shareStr, res.data.shareCode, res.data.shareLink)
+  } else {
+    ElMessage.error(res.msg)
+  }
+}
+// 分享成功弹出框
+const shareSuccessDialogVisible = ref(false)
+const shareSuccessData = ref({
+  shareStr: '',
+  shareCode: '',
+  shareLink: '',
+})
+const handleShareSuccess = async (shareStr: string, shareCode: string, shareLink: string) => {
+  shareSuccessDialogVisible.value = true
+  shareSuccessData.value.shareStr = shareStr
+  shareSuccessData.value.shareCode = shareCode
+  shareSuccessData.value.shareLink = shareLink
+}
+// 复制分享链接
+const copyShareLink = async () => {
+  try {
+    await navigator.clipboard.writeText(shareSuccessData.value.shareLink)
+    ElMessage.success('分享链接已复制到剪贴板')
+  } catch (err) {
+    console.error('无法复制到剪贴板:', err)
+    ElMessage.error('无法复制分享链接')
+  }
+}
+
 </script>
 <style lang="less" scoped></style>

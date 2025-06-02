@@ -48,6 +48,12 @@ export const resetShareExpire = (
   return request.put(url)
 }
 
+
+  // 重置分享权限
+export const getShareLink=(shareId: number)=> {
+  return request.post(`/user/share/generateShareLink?shareId=${shareId}`)
+}
+
 // 分享链接获取文件
 export const getShareByShareCode = (shareStr: string, extractCode: string) => {
   // // 构建请求 URL

@@ -23,11 +23,12 @@ export async function uploadFileChunk(
 }
 
 // 定义调用 /fileIsNew 接口的函数
-export const checkFileIsExist = (fileHash: string, fileName: string, targetPathId: number) => {
+export const checkFileIsExist = (fileHash: string, fileName: string, targetPathId: number, fileSize: number) => {
   return request.post('/user/file/fileIsExist', {
     fileHash,
     fileName,
     targetPathId,
+    fileSize,
   })
 }
 //
