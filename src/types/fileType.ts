@@ -114,3 +114,37 @@ export interface ShareResultDTO {
   shareCode: string
   shareLink: string
 }
+
+// 用户账户信息
+export interface UserAccountInfo {
+  userId: number
+  username: string
+  nickname: string
+  age: number
+  gender: number
+  phone: string
+  email: string
+  vip: number
+  avatar: string
+  usedSpace: number
+  totalSpace: number
+  registerTime: string
+  lastLoginTime: string
+  status: number
+}
+
+// 用户信息修改请求体
+export interface UserModifyRequest {
+  nickname?: string
+  age?: number
+  gender?: number
+  phone?: string
+  email?: string
+  avatar?: string
+}
+
+// 密码修改请求体
+export interface PasswordChangeRequest {
+  oldPassword: string
+  newPassword: string
+}

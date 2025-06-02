@@ -33,6 +33,10 @@ const routes = [
     component: () => import('@/views/layout/HomePage.vue'),
   },
   {
+    path: '/profile',
+    component: () => import('@/views/layout/ProfilePage.vue'),
+  },
+  {
     path: '/files',
     // component: FilesPage,
     component: () => import('@/views/layout/FilesPage.vue'),

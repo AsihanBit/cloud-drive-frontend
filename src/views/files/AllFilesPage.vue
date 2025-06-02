@@ -1,116 +1,185 @@
 <template>
-  <div>
-    <div class="common-layout">
-      <LeftFile />
-      <div class="all-files">
-        <div class="button-group">
-          <el-button type="primary" @click="createNewFolder()">新增文件夹</el-button>
-          <el-button type="primary" @click="handleShareItemsDialog()">分享选中文件</el-button>
-          <span style="font-size: 12px">(*新账户有些默认文件)</span>
-          <div class="search-box">
-            <el-input v-model="searchKeyword" placeholder="关键字" @keyup.enter="handleSearch">
-              <template #suffix>
-                <el-button icon="el-icon-search" @click="handleSearch">搜索</el-button>
-              </template>
-            </el-input>
-          </div>
+  <div class="modern-files-page">
+    <!-- 页面头部 -->
+    <div class="page-header">
+      <div class="header-left">
+        <h2 class="page-title">
+          <el-icon class="title-icon"><FolderOpened /></el-icon>
+          文件管理
+        </h2>
+        <p class="page-subtitle">管理您的所有文件和文件夹</p>
+      </div>
+      <div class="header-actions">
+        <div class="search-container">
+          <el-input 
+            v-model="searchKeyword" 
+            placeholder="搜索文件..."
+            @keyup.enter="handleSearch"
+            class="search-input"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+            <template #suffix>
+              <el-button 
+                @click="handleSearch" 
+                type="primary" 
+                size="small"
+                class="search-btn"
+              >
+                搜索
+              </el-button>
+            </template>
+          </el-input>
         </div>
-        <!-- 文件夹路径 -->
-        <!-- TODO 路径太长时,只显示根路径和最后三个文件夹路径 -->
-        <div class="folder-path">
-          <template v-for="(folder, index) in folderPath" :key="folder.id">
-            <div
-              class="folder-item"
-              :class="{ 'last-item': index === folderPath.length - 1 }"
-              @click="handleFolderPathClick(folder.id)"
-            >
-              {{ folder.name }}
-            </div>
-            <div class="separator" v-if="index < folderPath.length - 1">></div>
-          </template>
+      </div>
+    </div>
+
+    <!-- 操作工具栏 -->
+    <div class="toolbar">
+      <div class="toolbar-center">
+        <div class="action-buttons">
+          <el-button type="primary" @click="createNewFolder()" class="action-btn">
+            <el-icon><FolderAdd /></el-icon>
+            新建文件夹
+          </el-button>
+          <el-button type="success" @click="handleShareItemsDialog()" class="action-btn">
+            <el-icon><Share /></el-icon>
+            分享选中文件
+          </el-button>
         </div>
-        <el-table :data="fileList" @selection-change="handleSelectionChange">
+        <div class="tips">
+          <el-icon class="tip-icon"><InfoFilled /></el-icon>
+          <span class="tip-text">新账户包含一些默认文件</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 文件夹路径 -->
+    <div class="breadcrumb-container" v-if="folderPath.length > 0">
+      <el-breadcrumb separator=">" class="modern-breadcrumb">
+        <el-breadcrumb-item 
+          v-for="(folder, index) in folderPath" 
+          :key="folder.id"
+          @click="handleFolderPathClick(folder.id)"
+          :class="{ 'is-current': index === folderPath.length - 1 }"
+        >
+          <el-icon v-if="index === 0"><HomeFilled /></el-icon>
+          {{ folder.name }}
+        </el-breadcrumb-item>
+      </el-breadcrumb>
+    </div>
+
+    <!-- 文件列表 -->
+    <div class="files-content">
+      <div class="files-table-wrapper">
+        <el-table 
+          :data="fileList" 
+          @selection-change="handleSelectionChange"
+          class="modern-table"
+          :header-cell-style="{ background: '#f8fafc', color: '#374151', fontWeight: '600' }"
+        >
           <el-table-column type="selection" width="55" />
-          <el-table-column prop="itemId" label="Item ID" width="80" />
-          <!-- <el-table-column prop="itemName" label="文件名称" width="180" /> -->
-          <el-table-column prop="itemName" label="文件名称" width="180">
+          <el-table-column prop="itemId" label="ID" width="80" />
+          <el-table-column prop="itemName" label="文件名称" min-width="200">
             <template v-slot="scope">
-              <span v-html="scope.row.itemName"></span>
+              <div class="file-name-cell">
+                <el-icon class="file-icon" :style="{ color: getFileTypeColor(scope.row.itemType, scope.row.fileExtension) }">
+                  <component :is="getFileTypeIcon(scope.row.itemType, scope.row.fileExtension)" />
+                </el-icon>
+                <span v-html="scope.row.itemName" class="file-name"></span>
+              </div>
             </template>
           </el-table-column>
-          <el-table-column prop="directoryLevel" label="文件层级" width="100" />
           <el-table-column prop="itemType" label="类型" width="100">
             <template #default="scope">
-              <span v-if="scope.row.itemType === 1" style="cursor: pointer; color: black">
-                文件
-              </span>
-              <span
-                v-else
-                @click="
-                  handleFileClick(scope.row.itemId, scope.row.directoryLevel, scope.row.itemName)
-                "
-                style="cursor: pointer; color: blue"
+              <el-tag 
+                :type="scope.row.itemType === 1 ? 'primary' : 'success'" 
+                effect="light"
+                size="small"
               >
-                文件夹
-              </span>
+                {{ scope.row.itemType === 1 ? '文件' : '文件夹' }}
+              </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="fileId" label="File ID" width="100" />
-          <!-- pId为什么不是驼峰了? -->
-          <el-table-column prop="pid" label="父条目id" width="100" />
-          <el-table-column prop="fileSize" label="文件大小" width="100">
+          <el-table-column prop="fileSize" label="大小" width="120">
             <template #default="scope">
-              <span v-if="scope.row.itemType === 1">
+              <span v-if="scope.row.itemType === 1" class="file-size">
                 {{ formatSize(scope.row.fileSize) }}
               </span>
+              <span v-else class="folder-indicator">--</span>
             </template>
           </el-table-column>
-          <el-table-column prop="fileExtension" label="文件扩展名" width="100" />
-          <el-table-column label="操作" width="300">
+          <el-table-column label="修改时间" width="180">
+            <template #default="scope">
+              <div class="time-cell">
+                <el-icon class="time-icon"><Clock /></el-icon>
+                {{ formatDateTime(scope.row.updateTime) }}
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="320" fixed="right">
             <template #default="scope">
               <div class="operation-buttons">
                 <el-button
                   v-if="scope.row.itemType === 1"
-                  @click="
-                    downloadFile(
-                      scope.row.itemId,
-                      scope.row.fileId,
-                      scope.row.fileSize,
-                      scope.row.itemName,
-                    )
-                  "
-                  >下载
+                  @click="downloadFile(scope.row.itemId, scope.row.fileId, scope.row.fileSize, scope.row.itemName)"
+                  size="small"
+                  type="primary"
+                  class="op-btn"
+                >
+                  <el-icon><Download /></el-icon>
+                  下载
                 </el-button>
-                <el-button v-if="scope.row.itemType === 1" @click="previewFile(scope.row.itemId)"
-                  >预览
+                <el-button 
+                  v-if="scope.row.itemType === 1" 
+                  @click="previewFile(scope.row.itemId)"
+                  size="small"
+                  type="info"
+                  class="op-btn"
+                >
+                  <el-icon><View /></el-icon>
+                  预览
                 </el-button>
                 <el-button
                   v-else
-                  @click="
-                    handleFileClick(scope.row.itemId, scope.row.directoryLevel, scope.row.itemName)
-                  "
-                  >打开
+                  @click="handleFileClick(scope.row.itemId, scope.row.directoryLevel, scope.row.itemName)"
+                  size="small"
+                  type="success"
+                  class="op-btn"
+                >
+                  <el-icon><FolderOpened /></el-icon>
+                  打开
                 </el-button>
-                <el-button @click="handleShareItem(scope.row.itemId)"> 分享 </el-button>
+                <el-button 
+                  @click="handleShareItem(scope.row.itemId)" 
+                  size="small"
+                  type="warning"
+                  class="op-btn"
+                >
+                  <el-icon><Share /></el-icon>
+                  分享
+                </el-button>
                 <el-button
                   type="danger"
                   @click="handleDeleteItem(scope.row.itemId, scope.row.itemType)"
+                  size="small"
+                  class="op-btn"
                 >
+                  <el-icon><Delete /></el-icon>
                   删除
                 </el-button>
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="文件修改时间" width="180">
-            <template #default="scope">
-              {{ formatUpdateTime(scope.row.updateTime) }}
-            </template>
-          </el-table-column>
         </el-table>
-        <!-- 拖拽上传 -->
+      </div>
+
+      <!-- 拖拽上传区域 -->
+      <div class="upload-section">
         <el-upload
           ref="uploadRef"
-          class="upload-demo"
+          class="modern-upload"
           drag
           :limit="5"
           :auto-upload="false"
@@ -118,116 +187,134 @@
           @change="handleChange"
           multiple
         >
-          <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-          <div class="el-upload__text">
-            拖动文件到此处 或 <em>点击上传</em>
-            <div class="el-upload__tip">选择上传文件后请到传输页查看</div>
-            <div class="el-upload__tip">*体验阶段 所有上传/下载操作后都需到传输页确认*</div>
+          <div class="upload-content">
+            <el-icon class="upload-icon"><UploadFilled /></el-icon>
+            <div class="upload-text">
+              <h3>拖拽文件到此处 或 点击上传</h3>
+              <p class="upload-tip">选择文件后请到传输页面查看上传进度</p>
+              <p class="upload-notice">体验阶段：所有上传/下载操作需到传输页确认</p>
+            </div>
           </div>
         </el-upload>
       </div>
-      <!-- ==================== 弹出框 ==================== -->
-      <!-- 新建文件夹 -->
-      <el-dialog v-model="dialogVisible" title="新建文件夹">
-        <el-form :model="folderForm">
-          <el-form-item label="文件夹名称" label-width="120px">
-            <el-input v-model="folderForm.name" autocomplete="off"></el-input>
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="dialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmCreateFolder">确认</el-button>
-          </span>
-        </template>
-      </el-dialog>
-      <!-- 分享单个文件 -->
-      <el-dialog v-model="singleShareDialogVisible" title="分享文件">
-        <el-form :model="singleShareForm">
-          <el-form-item label="过期时间" label-width="120px">
-            <el-select v-model="singleShareForm.expireType" placeholder="请选择过期时间">
-              <el-option label="1天" value="0" />
-              <el-option label="7天" value="1" />
-              <el-option label="30天" value="2" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="访问次数限制" label-width="120px">
-            <el-input-number
-              v-model="singleShareForm.accessLimit"
-              :min="1"
-              placeholder="请输入访问次数限制"
-            />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="singleShareDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmSingleShareItem">确认</el-button>
-          </span>
-        </template>
-      </el-dialog>
-      <!-- 分享多个文件 -->
-      <el-dialog v-model="shareDialogVisible" title="分享文件">
-        <el-form :model="shareForm">
-          <el-form-item label="过期时间" label-width="120px">
-            <el-select v-model="shareForm.expireType" placeholder="请选择过期时间">
-              <el-option label="1天" value="0" />
-              <el-option label="7天" value="1" />
-              <el-option label="30天" value="2" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="访问次数限制" label-width="120px">
-            <el-input-number
-              v-model="shareForm.accessLimit"
-              :min="1"
-              placeholder="请输入访问次数限制"
-            />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="shareDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmShareItems">确认</el-button>
-          </span>
-        </template>
-      </el-dialog>
-      <!-- 分享成功弹出框 -->
-      <el-dialog v-model="shareSuccessDialogVisible" title="分享成功">
-        <el-form>
-          <el-form-item label="分享链接" label-width="120px">
-            <el-input v-model="shareSuccessData.shareLink" readonly></el-input>
-          </el-form-item>
-          <el-form-item label="提取码" label-width="120px">
-            <el-input v-model="shareSuccessData.shareCode" readonly></el-input>
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <span class="dialog-footer">
-            <el-button @click="shareSuccessDialogVisible = false">关闭</el-button>
-            <el-button type="primary" @click="copyShareLink">复制分享链接</el-button>
-          </span>
-        </template>
-      </el-dialog>
     </div>
+
+    <!-- 对话框 -->
+    <!-- 新建文件夹对话框 -->
+    <el-dialog v-model="dialogVisible" title="新建文件夹" class="modern-dialog" width="500px">
+      <el-form :model="folderForm" label-width="120px">
+        <el-form-item label="文件夹名称">
+          <el-input v-model="folderForm.name" placeholder="请输入文件夹名称" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmCreateFolder">确认创建</el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 分享单个文件 -->
+    <el-dialog v-model="singleShareDialogVisible" title="分享文件" class="modern-dialog">
+      <el-form :model="singleShareForm">
+        <el-form-item label="过期时间" label-width="120px">
+          <el-select v-model="singleShareForm.expireType" placeholder="请选择过期时间">
+            <el-option label="1天" value="0" />
+            <el-option label="7天" value="1" />
+            <el-option label="30天" value="2" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="访问次数限制" label-width="120px">
+          <el-input-number
+            v-model="singleShareForm.accessLimit"
+            :min="1"
+            placeholder="请输入访问次数限制"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="singleShareDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmSingleShareItem">确认</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 分享多个文件 -->
+    <el-dialog v-model="shareDialogVisible" title="分享文件" class="modern-dialog">
+      <el-form :model="shareForm">
+        <el-form-item label="过期时间" label-width="120px">
+          <el-select v-model="shareForm.expireType" placeholder="请选择过期时间">
+            <el-option label="1天" value="0" />
+            <el-option label="7天" value="1" />
+            <el-option label="30天" value="2" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="访问次数限制" label-width="120px">
+          <el-input-number
+            v-model="shareForm.accessLimit"
+            :min="1"
+            placeholder="请输入访问次数限制"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="shareDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmShareItems">确认</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 分享成功弹出框 -->
+    <el-dialog v-model="shareSuccessDialogVisible" title="分享成功" class="modern-dialog">
+      <el-form>
+        <el-form-item label="分享链接" label-width="120px">
+          <el-input v-model="shareSuccessData.shareLink" readonly></el-input>
+        </el-form-item>
+        <el-form-item label="提取码" label-width="120px">
+          <el-input v-model="shareSuccessData.shareCode" readonly></el-input>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="shareSuccessDialogVisible = false">关闭</el-button>
+          <el-button type="primary" @click="copyShareLink">复制分享链接</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script lang="ts" setup>
 import LeftFile from '@/components/LeftFile.vue'
 import { getUserItems } from '@/api/userItems'
-import { Folder, Picture, UploadFilled } from '@element-plus/icons-vue'
+import { 
+  FolderOpened, 
+  FolderAdd, 
+  Share, 
+  InfoFilled, 
+  Search, 
+  HomeFilled, 
+  UploadFilled,
+  Download,
+  View,
+  Delete,
+  Clock,
+  Document,
+  Picture,
+  VideoPlay,
+  Headset
+} from '@element-plus/icons-vue'
 import { useUploadFileStore } from '@/stores/uploadFile'
 import { useUserFilesStore } from '@/stores/userFiles'
 import { useDownloadFileStore } from '@/stores/downloadFile'
 import { downloadChunk, createFolder, deleteItem, shareItems } from '@/api/file'
-import { ElMessage, ElMessageBox } from 'element-plus' // 导入 ElMessage
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 import type { Result, ShareResultDTO } from '@/types/fileType'
-
 import { useRouter } from 'vue-router'
-
-const router = useRouter()
-
 import type {
   UploadInstance,
   UploadProps,
@@ -239,40 +326,137 @@ import type {
 import { ref, onMounted, computed } from 'vue'
 import { CHUNK_DOWNLOAD_SIZE, UNITS } from '@/constants/constants'
 
-import axios from 'axios'
-// const fileList = ref([]) as Array<any>
-const fileList = ref<any[]>([]) // 明确类型为 any[]
+const router = useRouter()
+
+// 响应式数据
+const fileList = ref<any[]>([])
 const uploadRef = ref<UploadInstance>()
 const uploadFileStore = useUploadFileStore()
 const userFilesStore = useUserFilesStore()
 const downloadFileStore = useDownloadFileStore()
-
-console.log(userFilesStore.lastFolderId)
-
-// 选中文件itemIds
+const searchKeyword = ref('')
 const selectedItemIds = ref<number[]>([])
 
-const handleSelectionChange = (selection: any[]) => {
-  selectedItemIds.value = selection.map((file) => file.itemId)
-}
-// 弹出框相关
+// 对话框相关
 const dialogVisible = ref(false)
 const folderForm = ref({
   name: '',
   pid: 0,
 })
 
-// 分享单个文件
+// 分享相关
 const singleShareDialogVisible = ref(false)
 const singleShareItemId = ref<number | null>(null)
 const singleShareForm = ref({
   expireType: '',
   accessLimit: null as number | null,
 })
+
+const shareDialogVisible = ref(false)
+const shareForm = ref({
+  expireType: '',
+  accessLimit: null as number | null,
+})
+
+const shareSuccessDialogVisible = ref(false)
+const shareSuccessData = ref({
+  shareStr: '',
+  shareCode: '',
+  shareLink: '',
+})
+
+// 计算属性
+const folderPath = computed(() => {
+  return userFilesStore.getAllFolders()
+})
+
+// 文件类型图标和颜色
+const getFileTypeIcon = (itemType: number, fileExtension?: string) => {
+  if (itemType === 0) return FolderOpened
+  
+  if (!fileExtension) return Document
+  
+  const ext = fileExtension.toLowerCase()
+  if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
+    return Picture
+  } else if (['mp4', 'avi', 'mov', 'wmv', 'mkv'].includes(ext)) {
+    return VideoPlay
+  } else if (['mp3', 'wav', 'flac', 'aac'].includes(ext)) {
+    return Headset
+  } else {
+    return Document
+  }
+}
+
+const getFileTypeColor = (itemType: number, fileExtension?: string) => {
+  if (itemType === 0) return '#f59e0b'
+  
+  if (!fileExtension) return '#6b7280'
+  
+  const ext = fileExtension.toLowerCase()
+  if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
+    return '#10b981'
+  } else if (['mp4', 'avi', 'mov', 'wmv', 'mkv'].includes(ext)) {
+    return '#ef4444'
+  } else if (['mp3', 'wav', 'flac', 'aac'].includes(ext)) {
+    return '#8b5cf6'
+  } else {
+    return '#3b82f6'
+  }
+}
+
+// 方法
+const handleSelectionChange = (selection: any[]) => {
+  selectedItemIds.value = selection.map((file) => file.itemId)
+}
+
+const createNewFolder = () => {
+  const currentFolder = userFilesStore.userFilePath[userFilesStore.userFilePath.length - 1]
+  folderForm.value.pid = currentFolder ? currentFolder.id : 0
+  dialogVisible.value = true
+}
+
+const confirmCreateFolder = async () => {
+  try {
+    const res = (await createFolder(
+      folderForm.value.pid,
+      folderForm.value.name,
+    )) as unknown as Result
+    if (res.code === 1) {
+      const currentFolder = userFilesStore.userFilePath[userFilesStore.userFilePath.length - 1]
+      const response = (await getUserItems(
+        currentFolder ? currentFolder.id : 0,
+      )) as unknown as Result
+      if (response.code === 1) {
+        fileList.value = (response.data as unknown as Array<any>).sort(
+          (a, b) => a.itemType - b.itemType,
+        )
+      }
+      dialogVisible.value = false
+      folderForm.value.name = ''
+      ElMessage.success('文件夹创建成功')
+    } else {
+      ElMessage.error('文件夹创建失败')
+    }
+  } catch (error) {
+    console.error('Error creating folder:', error)
+    ElMessage.error('文件夹创建失败')
+  }
+}
+
+const handleShareItemsDialog = () => {
+  if (selectedItemIds.value.length === 0) {
+    ElMessage.warning('请先选择要分享的文件')
+    return
+  }
+  shareDialogVisible.value = true
+}
+
 const handleShareItem = (itemId: number) => {
   singleShareItemId.value = itemId
   singleShareDialogVisible.value = true
 }
+
 const confirmSingleShareItem = async () => {
   if (singleShareItemId.value === null) {
     ElMessage.error('文件ID无效')
@@ -280,8 +464,7 @@ const confirmSingleShareItem = async () => {
   }
 
   const expireTypeValue = parseInt(singleShareForm.value.expireType, 10)
-  const accessLimitValue =
-    singleShareForm.value.accessLimit !== null ? singleShareForm.value.accessLimit : 100
+  const accessLimitValue = singleShareForm.value.accessLimit || 100
 
   try {
     const response = (await shareItems(
@@ -298,6 +481,7 @@ const confirmSingleShareItem = async () => {
     }
   } catch (error) {
     console.error('分享失败:', error)
+    ElMessage.error('分享失败')
   } finally {
     singleShareDialogVisible.value = false
     singleShareForm.value.expireType = ''
@@ -305,45 +489,9 @@ const confirmSingleShareItem = async () => {
   }
 }
 
-// 单文件分享测试
-// const itemIds = ref([1, 2, 3, 4]) // 示例数据
-// const expireType = ref(1) // 示例有效期类型
-// const accessLimit = ref(10) // 示例访问次数限制
-// const handleShareItemOrigin = async (itemId: number) => {
-//   try {
-//     const response = (await shareItems(
-//       [itemId],
-//       expireType.value,
-//       accessLimit.value,
-//     )) as unknown as Result
-//     if (response.code === 1) {
-//       ElMessage.success('分享成功')
-//     } else {
-//       ElMessage.error('分享失败')
-//     }
-//   } catch (error) {
-//     console.error('分享失败:', error)
-//   }
-// }
-
-// 分享多文件
-const shareDialogVisible = ref(false)
-const shareForm = ref({
-  expireType: '',
-  accessLimit: null as number | null,
-})
-
-const handleShareItemsDialog = () => {
-  if (selectedItemIds.value.length === 0) {
-    ElMessage.warning('请先选择要分享的文件')
-    return
-  }
-  shareDialogVisible.value = true
-}
-
 const confirmShareItems = async () => {
   const expireTypeValue = parseInt(shareForm.value.expireType, 10)
-  const accessLimitValue = shareForm.value.accessLimit !== null ? shareForm.value.accessLimit : 100
+  const accessLimitValue = shareForm.value.accessLimit || 100
 
   try {
     const response = (await shareItems(
@@ -361,6 +509,7 @@ const confirmShareItems = async () => {
     }
   } catch (error) {
     console.error('分享失败:', error)
+    ElMessage.error('分享失败')
   } finally {
     shareDialogVisible.value = false
     shareForm.value.expireType = ''
@@ -368,21 +517,13 @@ const confirmShareItems = async () => {
   }
 }
 
-// 分享成功弹出框
-const shareSuccessDialogVisible = ref(false)
-const shareSuccessData = ref({
-  shareStr: '',
-  shareCode: '',
-  shareLink: '',
-})
-const handleShareSuccess = async (shareStr: string, shareCode: string, shareLink: string) => {
+const handleShareSuccess = (shareStr: string, shareCode: string, shareLink: string) => {
   shareSuccessDialogVisible.value = true
   shareSuccessData.value.shareStr = shareStr
   shareSuccessData.value.shareCode = shareCode
   shareSuccessData.value.shareLink = shareLink
 }
 
-// 复制分享链接
 const copyShareLink = async () => {
   try {
     await navigator.clipboard.writeText(shareSuccessData.value.shareLink)
@@ -393,53 +534,6 @@ const copyShareLink = async () => {
   }
 }
 
-// 创建文件夹
-const createNewFolder = () => {
-  // 获取当前文件夹的 id 作为 pid
-  const currentFolder = userFilesStore.userFilePath[userFilesStore.userFilePath.length - 1]
-  // const currentFolder = fileList.value[0].pId
-  console.log('createNewFolder', currentFolder)
-  folderForm.value.pid = currentFolder ? currentFolder.id : 0
-  dialogVisible.value = true
-}
-const confirmCreateFolder = async () => {
-  try {
-    const res = (await createFolder(
-      folderForm.value.pid,
-      folderForm.value.name,
-    )) as unknown as Result
-    if (res.code === 1) {
-      // 刷新文件列表
-      const currentFolder = userFilesStore.userFilePath[userFilesStore.userFilePath.length - 1]
-      // const currentFolder = fileList.value[0].pId
-      const response = (await getUserItems(
-        currentFolder ? currentFolder.id : 0,
-      )) as unknown as Result
-      if (response.code === 1) {
-        // as any[]
-        fileList.value = (response.data as unknown as Array<any>).sort(
-          (a, b) => a.itemType - b.itemType,
-        )
-      } else {
-        console.error('Failed to fetch user items:', response.msg)
-      }
-      dialogVisible.value = false
-      ElMessage.success('文件夹创建成功')
-    } else {
-      console.error('Failed to create folder:', res.msg)
-      ElMessage.error('文件夹创建失败')
-    }
-  } catch (error) {
-    console.error('Error creating folder:', error)
-    ElMessage.error('文件夹创建失败')
-  }
-}
-// 重进直接清空
-userFilesStore.userFilePath = []
-//http://localhost:8080/user/file/downloadChunk  downloadTest
-
-// 待做: formatSize pinia化
-// 格式化文件大小
 const formatSize = (fileSize: number) => {
   let size = fileSize || 0
   let i = 0
@@ -449,16 +543,26 @@ const formatSize = (fileSize: number) => {
   }
   return size.toFixed(2) + ' ' + UNITS[i]
 }
-// 下载单个文件
+
+const formatDateTime = (dateArray: number[] | undefined): string => {
+  if (!dateArray || dateArray.length !== 6) {
+    return ''
+  }
+  const [year, month, day, hour, minute, second] = dateArray
+  return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:${second.toString().padStart(2, '0')}`
+}
+
+const handleChange = (file: UploadFile) => {
+  uploadFileStore.addFile(file, userFilesStore.lastFolderId)
+}
+
 const downloadFile = async (itemId: number, fileId: number, fileSize: number, itemName: string) => {
   try {
-    const chunkSize = CHUNK_DOWNLOAD_SIZE // 每个片段的大小（50KB）
+    const chunkSize = CHUNK_DOWNLOAD_SIZE
 
-
- // 先检查文件是否可下载（发送一个首次请求）
- try {
+    // 检查文件是否可下载
+    try {
       const testResponse = await downloadChunk(itemId, fileId, 0, Math.min(1, fileSize - 1))
-      // 如果是JSON格式的错误响应
       if (testResponse instanceof Blob && testResponse.type === 'application/json') {
         const errorText = await new Response(testResponse).text();
         const errorData = JSON.parse(errorText);
@@ -471,16 +575,10 @@ const downloadFile = async (itemId: number, fileId: number, fileSize: number, it
       return;
     }
 
-
-    // 添加文件到下载文件存储
     downloadFileStore.addFile(itemId, itemName, fileSize)
     let start = 0
 
-
-    // 如果浏览器支持 showSaveFilePicker
-    // window.showSaveFilePicker, 测试环境,不进入if时可以写 0
     if (window.showSaveFilePicker) {
-      // 请求文件系统写入权限
       const fileHandle = await window.showSaveFilePicker({
         suggestedName: itemName,
       })
@@ -488,7 +586,6 @@ const downloadFile = async (itemId: number, fileId: number, fileSize: number, it
 
       downloadFileStore.setFileStatus(itemId, '正在下载')
 
-      // 分片下载并写入
       while (start < fileSize) {
         const end = Math.min(start + chunkSize - 1, fileSize - 1)
         const chunkBlob = (await downloadChunk(
@@ -497,31 +594,18 @@ const downloadFile = async (itemId: number, fileId: number, fileSize: number, it
           start,
           end,
         )) as unknown as WriteParams
-        console.log('chunkBlob', chunkBlob)
         await writableStream.write(chunkBlob)
-        // await writableStream.write(chunkBlob)
         start = end + 1
-
-        // 更新已下载的分片数量
         downloadFileStore.incrementDownloadChunks(itemId)
-        // if(downloadFileStore.files[])
       }
-      // 关闭写入流
       await writableStream.close()
-      console.log('文件下载完成')
     } else {
-      // 回退方案：使用传统的文件下载方式
       const blobParts: BlobPart[] = []
       while (start < fileSize) {
         const end = Math.min(start + chunkSize - 1, fileSize - 1)
         const chunkBlob = (await downloadChunk(itemId, fileId, start, end)) as unknown as Blob
-        // const chunkResponse = await downloadChunk(itemId, fileId, start, end)
-        // const chunkBlob = new Blob([chunkResponse.data], { type: 'application/octet-stream' }) // 转换为 Blob
-
         blobParts.push(chunkBlob)
         start = end + 1
-
-        // 更新已下载的分片数量
         downloadFileStore.incrementDownloadChunks(itemId)
       }
 
@@ -534,53 +618,15 @@ const downloadFile = async (itemId: number, fileId: number, fileSize: number, it
       a.click()
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
-      console.log('文件下载完成')
     }
+    ElMessage.success('文件下载完成')
   } catch (error) {
     console.error('文件下载失败:', error)
+    ElMessage.error('文件下载失败')
   }
 }
-
-// 计算属性：生成当前的文件夹路径
-const folderPath = computed(() => {
-  return userFilesStore.getAllFolders()
-  // .filter((folder) => folder.directoryLevel <= userFilesStore.getAllFolders().length - 1)
-})
-
-const formatUpdateTime = (updateTime: number[] | undefined): string => {
-  if (!updateTime || updateTime.length !== 6) {
-    return ''
-  }
-  const [year, month, day, hour, minute, second] = updateTime
-  return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')} ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}:${second.toString().padStart(2, '0')}`
-}
-
-const handleChange = (file: UploadFile) => {
-  uploadFileStore.addFile(file, userFilesStore.lastFolderId)
-}
-
-onMounted(async () => {
-  try {
-    const res = (await getUserItems(0)) as unknown as Result
-    if (res.code === 1) {
-      userFilesStore.userFilePath.push({
-        id: 0,
-        name: '根目录',
-        directoryLevel: 0,
-      })
-      // fileList.value = res.data
-      // (res.data as unknown as Array<any>)
-      fileList.value = (res.data as unknown as Array<any>).sort((a, b) => a.itemType - b.itemType)
-    } else {
-      console.error('Failed to fetch user items:', res.msg)
-    }
-  } catch (error) {
-    console.error('Error fetching user items:', error)
-  }
-})
 
 const handleFileClick = async (itemPId: number, directoryLevel: number, itemName: string) => {
-  console.log('Clicked on itemPId:', itemPId)
   try {
     const res = (await getUserItems(itemPId)) as unknown as Result
     if (res.code === 1) {
@@ -589,10 +635,7 @@ const handleFileClick = async (itemPId: number, directoryLevel: number, itemName
         directoryLevel: directoryLevel + 1,
         name: itemName,
       })
-      // fileList.value = res.data
       fileList.value = (res.data as unknown as Array<any>).sort((a, b) => a.itemType - b.itemType)
-    } else {
-      console.error('Failed to fetch user items:', res.msg)
     }
   } catch (error) {
     console.error('Error fetching user items:', error)
@@ -600,29 +643,19 @@ const handleFileClick = async (itemPId: number, directoryLevel: number, itemName
 }
 
 const handleFolderPathClick = async (folderId: number) => {
-  console.log('Clicked on folder path:', folderId)
   try {
-    // 获取当前文件夹的索引
     const folderIndex = userFilesStore.getAllFolders().findIndex((folder) => folder.id === folderId)
-    if (folderIndex === -1) {
-      console.error('Folder not found:', folderId)
-      return
-    }
+    if (folderIndex === -1) return
 
-    // 删除当前文件夹及其之后的所有文件夹
     userFilesStore.userFilePath = userFilesStore.userFilePath.slice(0, folderIndex + 1)
 
-    // 获取新的文件列表
     const folder = userFilesStore.getFolderById(folderId)
     if (folder) {
       const response = (await getUserItems(Number(folder.id))) as unknown as Result
       if (response.code === 1) {
-        // fileList.value = response.data
         fileList.value = (response.data as unknown as Array<any>).sort(
           (a, b) => a.itemType - b.itemType,
         )
-      } else {
-        console.error('Failed to fetch user items:', response.msg)
       }
     }
   } catch (error) {
@@ -632,7 +665,6 @@ const handleFolderPathClick = async (folderId: number) => {
 
 const handleDeleteItem = async (itemId: number, itemType: number) => {
   try {
-    // 弹出确认对话框
     if (itemType === 0) {
       await ElMessageBox.confirm('确定要删除该文件夹包含内容吗?', '提示', {
         confirmButtonText: '确定',
@@ -643,7 +675,6 @@ const handleDeleteItem = async (itemId: number, itemType: number) => {
 
     const res = (await deleteItem(itemId)) as unknown as Result
     if (res.code === 1) {
-      // 刷新文件列表
       const currentFolder = userFilesStore.userFilePath[userFilesStore.userFilePath.length - 1]
       const response = (await getUserItems(
         currentFolder ? currentFolder.id : 0,
@@ -652,12 +683,9 @@ const handleDeleteItem = async (itemId: number, itemType: number) => {
         fileList.value = (response.data as unknown as Array<any>).sort(
           (a, b) => a.itemType - b.itemType,
         )
-      } else {
-        console.error('Failed to fetch user items:', response.msg)
       }
       ElMessage.success('文件/文件夹删除成功')
     } else {
-      console.error('Failed to delete item:', res.msg)
       ElMessage.error('文件/文件夹删除失败')
     }
   } catch (error) {
@@ -666,33 +694,21 @@ const handleDeleteItem = async (itemId: number, itemType: number) => {
   }
 }
 
-// 文件预览
 const previewFile = async (itemId: number) => {
   try {
-    console.log('itemId:', itemId)
-
     const res = (await request.get(`/user/view/preview?itemId=${itemId}`)) as Result
-    console.log('Response:', res) // 打印完整的响应
     if (res.code === 1) {
-      // as URL
-      const previewUrl = res.data as unknown as string // 后端返回的预览链接
+      const previewUrl = res.data as unknown as string
       if (previewUrl) {
-        window.open(new URL(previewUrl)) // 打开预览页面
-        // 导航到加载页面，并传递预览URL作为查询参数
-        // router.push({ name: 'LoadingPage', query: { previewUrl } })
-      } else {
-        console.error('previewUrl is undefined')
+        window.open(new URL(previewUrl))
       }
-    } else {
-      console.error('Response is empty')
     }
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Preview error:', error)
+    ElMessage.error('预览失败')
   }
 }
 
-// 文件搜索
-const searchKeyword = ref('')
 const handleSearch = async () => {
   if (!searchKeyword.value) {
     ElMessage.warning('请输入搜索关键字')
@@ -703,10 +719,8 @@ const handleSearch = async () => {
     const res = (await request.get(`/user/search/keyword?keyword=${searchKeyword.value}`)) as Result
     if (res.code === 1) {
       userFilesStore.userFilePath = userFilesStore.userFilePath.slice(0, 1)
-
       fileList.value = (res.data as unknown as Array<any>).sort((a, b) => a.itemType - b.itemType)
     } else {
-      console.error('搜索失败:', res.msg)
       ElMessage.error('搜索失败')
     }
   } catch (error) {
@@ -715,94 +729,443 @@ const handleSearch = async () => {
   }
 }
 
-const highlightKeyword = (text: string, keyword: string) => {
-  if (!keyword) {
-    return text
+// 初始化
+userFilesStore.userFilePath = []
+
+onMounted(async () => {
+  try {
+    const res = (await getUserItems(0)) as unknown as Result
+    if (res.code === 1) {
+      userFilesStore.userFilePath.push({
+        id: 0,
+        name: '根目录',
+        directoryLevel: 0,
+      })
+      fileList.value = (res.data as unknown as Array<any>).sort((a, b) => a.itemType - b.itemType)
+    }
+  } catch (error) {
+    console.error('Error fetching user items:', error)
   }
-  const regex = new RegExp(`(${keyword})`, 'gi')
-  return text.replace(regex, '<em class="em-highlight">$1</em>')
-}
+})
 </script>
 
 <style lang="less" scoped>
-.common-layout {
-  display: flex;
-  height: 76vh;
+.modern-files-page {
+  background: transparent;
+  min-height: 100vh;
+  padding: 0;
 
-  .all-files {
-    background-color: rgba(188, 143, 143, 0.61);
-    height: 100%;
-    // width: 100%;
-    .el-table {
-      height: 43vh;
-      // ::v-deep em {
-      :deep(em) {
-        color: rgb(255, 94, 0);
-        font-style: normal;
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 24px 32px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+
+    .header-left {
+      .page-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 28px;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin: 0 0 8px 0;
+
+        .title-icon {
+          color: #667eea;
+          font-size: 32px;
+        }
+      }
+
+      .page-subtitle {
+        color: #6b7280;
+        font-size: 16px;
+        margin: 0;
+      }
+    }
+
+    .header-actions {
+      .search-container {
+        .search-input {
+          width: 320px;
+
+          :deep(.el-input__wrapper) {
+            border-radius: 24px;
+            border: 2px solid #e5e7eb;
+            transition: all 0.3s ease;
+
+            &:hover {
+              border-color: #d1d5db;
+            }
+
+            &.is-focus {
+              border-color: #667eea;
+              box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            }
+          }
+
+          .search-btn {
+            border-radius: 16px;
+            margin-right: 4px;
+          }
+        }
+      }
+    }
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+    align-items: flex-start;
+
+    .toolbar-center {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 20px 24px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+
+      .action-buttons {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 16px;
+
+        .action-btn {
+          padding: 12px 20px;
+          border-radius: 12px;
+          font-weight: 600;
+          transition: all 0.3s ease;
+
+          &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+          }
+        }
+      }
+
+      .tips {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #6b7280;
+        font-size: 14px;
+
+        .tip-icon {
+          color: #3b82f6;
+        }
+      }
+    }
+  }
+
+  .breadcrumb-container {
+    margin-bottom: 24px;
+    padding: 16px 24px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+
+    .modern-breadcrumb {
+      :deep(.el-breadcrumb__item) {
+        .el-breadcrumb__inner {
+          color: #667eea;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.3s ease;
+
+          &:hover {
+            color: #5a67d8;
+          }
+        }
+
+        &.is-current {
+          .el-breadcrumb__inner {
+            color: #1a1a1a;
+            font-weight: 600;
+            cursor: default;
+          }
+        }
+      }
+    }
+  }
+
+  .files-content {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+
+    .files-table-wrapper {
+      margin-bottom: 32px;
+      min-height: 400px;
+    }
+
+    .modern-table {
+      :deep(.el-table__header) {
+        .el-table__cell {
+          background: #f8fafc;
+          border-bottom: 2px solid #e5e7eb;
+        }
+      }
+
+      :deep(.el-table__row) {
+        transition: all 0.3s ease;
+
+        &:hover {
+          background: #f8fafc;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+      }
+
+      .file-name-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        .file-icon {
+          font-size: 18px;
+        }
+
+        .file-name {
+          font-weight: 500;
+
+          :deep(em) {
+            color: #ef4444;
+            font-style: normal;
+            background: rgba(239, 68, 68, 0.1);
+            padding: 2px 4px;
+            border-radius: 4px;
+          }
+        }
+      }
+
+      .time-cell {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #6b7280;
+        font-size: 14px;
+
+        .time-icon {
+          font-size: 14px;
+        }
+      }
+
+      .operation-buttons {
+        display: flex;
+        gap: 6px;
+        justify-content: flex-end;
+
+        .op-btn {
+          padding: 6px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 500;
+          transition: all 0.3s ease;
+
+          &:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          }
+        }
+      }
+    }
+
+    .upload-section {
+      margin-top: 32px;
+
+      .modern-upload {
+        :deep(.el-upload-dragger) {
+          border: 2px dashed #d1d5db;
+          border-radius: 16px;
+          background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+          transition: all 0.3s ease;
+          padding: 40px;
+
+          &:hover {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.1);
+          }
+        }
+
+        .upload-content {
+          text-align: center;
+
+          .upload-icon {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 16px;
+          }
+
+          .upload-text {
+            h3 {
+              font-size: 18px;
+              font-weight: 600;
+              color: #1a1a1a;
+              margin: 0 0 12px 0;
+            }
+
+            .upload-tip {
+              color: #6b7280;
+              font-size: 14px;
+              margin: 0 0 8px 0;
+            }
+
+            .upload-notice {
+              color: #f59e0b;
+              font-size: 13px;
+              margin: 0;
+              font-weight: 500;
+            }
+          }
+        }
       }
     }
   }
 }
 
-.folder-path {
-  display: flex;
-  align-items: center;
-  font-size: 14px;
-  color: #333;
-  padding: 8px;
-  background-color: #f5f5f5;
-  border-radius: 4px;
-  margin-bottom: 16px;
+// 对话框样式
+:deep(.modern-dialog) {
+  border-radius: 20px;
+  overflow: hidden;
 
-  .folder-item {
-    color: #409eff;
-    cursor: pointer;
-    margin: 0 4px;
-
-    &:hover {
-      // text-decoration: underline;
-      color: rgb(39, 223, 255);
-    }
-
-    &.last-item {
-      font-weight: bold; // 最后一个元素加粗
-      color: #000; // 最后一个元素颜色改为黑色
-    }
-    &.last-item:hover {
-      font-weight: bold; // 最后一个元素加粗
-      color: #4530fc; // 最后一个元素颜色改为黑色
-    }
+  .el-dialog__header {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    padding: 24px;
+    border-bottom: 1px solid #e5e7eb;
   }
 
-  .separator {
-    margin: 0 4px;
-    color: #999;
+  .el-dialog__body {
+    padding: 24px;
+  }
+
+  .el-dialog__footer {
+    padding: 16px 24px 24px;
+    background: #f8fafc;
+  }
+
+  .dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+
+    .el-button {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
   }
 }
 
-.operation-buttons {
-  display: flex;
-  justify-content: flex-end; /* 右对齐 */
-  // gap: 8px; /* 按钮之间的间距 */
+// 响应式设计
+@media (max-width: 1200px) {
+  .modern-files-page {
+    .page-header {
+      flex-direction: column;
+      gap: 16px;
+      text-align: center;
+
+      .header-actions {
+        .search-container {
+          .search-input {
+            width: 280px;
+          }
+        }
+      }
+    }
+
+    .toolbar {
+      flex-direction: column;
+
+      .toolbar-center {
+        .action-buttons {
+          flex-direction: column;
+          gap: 12px;
+        }
+      }
+    }
+  }
 }
 
-.operation-buttons .el-button {
-  min-width: 50px; /* 统一按钮宽度 */
-}
+@media (max-width: 768px) {
+  .modern-files-page {
+    .page-header {
+      padding: 16px 20px;
 
-.button-group {
-  display: flex;
-  justify-content: center; // 改为 space-between 而不是 center
-  margin-top: 10px;
-  margin-bottom: 10px;
-  white-space: nowrap; /* 禁止文字换行 */
-  align-items: center; /* 垂直居中 */
-  padding: 0 20px; // 添加左右内边距防止内容贴边
+      .header-left {
+        .page-title {
+          font-size: 24px;
 
-  .search-box {
-    width: 250px;
-    margin-left: auto; // 改为 auto 而不是固定 900px
-    margin-right: 20px; // 添加右边距
+          .title-icon {
+            font-size: 28px;
+          }
+        }
+
+        .page-subtitle {
+          font-size: 14px;
+        }
+      }
+
+      .header-actions {
+        .search-container {
+          .search-input {
+            width: 100%;
+            min-width: 240px;
+          }
+        }
+      }
+    }
+
+    .files-content {
+      padding: 16px;
+
+      .modern-table {
+        :deep(.el-table) {
+          font-size: 14px;
+        }
+
+        .operation-buttons {
+          flex-direction: column;
+          gap: 4px;
+
+          .op-btn {
+            font-size: 11px;
+            padding: 4px 8px;
+          }
+        }
+      }
+
+      .upload-section {
+        .modern-upload {
+          :deep(.el-upload-dragger) {
+            padding: 24px;
+          }
+
+          .upload-content {
+            .upload-icon {
+              font-size: 36px;
+            }
+
+            .upload-text {
+              h3 {
+                font-size: 16px;
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
 </style>
